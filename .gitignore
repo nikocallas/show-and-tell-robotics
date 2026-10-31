@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Secrets
+.env
+
+# Local caches and run output (paid API responses, renders, job DBs)
+cache/
+data/
+
+# Third-party checkouts (cloned by setup; see README)
+third_party/
+
+# Web
+web/node_modules/
+web/dist/
+web/.vercel/
+
+# OS
+.DS_Store

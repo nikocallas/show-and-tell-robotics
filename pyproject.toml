@@ -1,0 +1,49 @@
+[project]
+name = "showtell"
+version = "0.1.0"
+description = "Show & Tell Robotics: show a robot a task once, state the rules, get a program proven in simulation."
+requires-python = ">=3.11"
+dependencies = [
+    "mujoco>=3.2",
+    "numpy",
+    "scipy",
+    "imageio",
+    "imageio-ffmpeg",
+    "opencv-python-headless",
+    "openai>=1.60",
+    "pydantic>=2.6",
+    "python-dotenv",
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlmodel",
+    "python-multipart",
+    "httpx",
+    "tenacity",
+    "rich",
+    "typer",
+    "pyyaml",
+    "meta-sam-parser>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools.packages.find]
+include = ["showtell*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["third_party", "web", "cache", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["SIM108", "B008"]  # B008: typer/FastAPI declare options as call defaults
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: runs physics for many seeds (minutes)",
+    "api: calls the paid Meta Model API (needs MODEL_API_KEY)",
+]
+addopts = "-m 'not slow and not api'"
