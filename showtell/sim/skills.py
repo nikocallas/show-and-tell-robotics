@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import inspect
 import math
+from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 
@@ -36,6 +37,9 @@ SLOT_OFFSET = 0.045  # 2x2 placement slots inside each bin
 GRASP_ABOVE_BASE = 0.022
 FINGER_MAX = 0.04  # m per finger at ctrl 255
 ARM_CLEARANCE_OK = 0.02  # whole-arm clearance from avoided objects we are happy with
+MAX_SKILL_CALLS = 200  # per run; a sorting program makes a few dozen at most
+TRACE_HEAD, TRACE_TAIL = 500, 250  # trace entries kept from the start and the end of a run
+MAX_AVOID_MARGIN = 1.0  # m
 POSTURE_J3 = (
     0.4,
     -0.4,
@@ -131,7 +135,9 @@ class Robot:
         self.touch_events: list[dict] = []
         self.phase = "start"
         self.initial_pose = {o.id: self.object_pose(o.id) for o in self.meta.objects}
-        self.trace: list[dict] = []
+        self._trace_head: list[dict] = []
+        self._trace_tail: deque[dict] = deque(maxlen=TRACE_TAIL)
+        self._trace_dropped = 0
         self._cmd_q = self.PARK_Q.copy()
         self._cmd_pos, self._cmd_yaw = self.ee_pose()
         self.rest = self.REST_Q.copy()
@@ -140,7 +146,25 @@ class Robot:
             self._ready_solved = True
 
     def log(self, event: str, **info) -> None:
-        self.trace.append({"t": round(float(self.data.time), 3), "event": event, **info})
+        """Append a step to the trace. A long run keeps its first TRACE_HEAD and last TRACE_TAIL
+        entries, so a program cannot grow the trace (and the result sent back) without bound."""
+        entry = {"t": round(float(self.data.time), 3), "event": event, **info}
+        if len(self._trace_head) < TRACE_HEAD:
+            self._trace_head.append(entry)
+            return
+        if len(self._trace_tail) == TRACE_TAIL:
+            self._trace_dropped += 1
+        self._trace_tail.append(entry)
+
+    @property
+    def trace(self) -> list[dict]:
+        """The step trace, oldest first; a `trace_truncated` entry marks a dropped middle."""
+        out = list(self._trace_head)
+        if self._trace_dropped:
+            first = self._trace_tail[0]["t"]
+            out.append({"t": first, "event": "trace_truncated", "dropped": self._trace_dropped})
+        out.extend(self._trace_tail)
+        return out
 
     def object_pose(self, obj_id: str) -> dict:
         b = self.meta.obj_body[obj_id]
@@ -621,8 +645,11 @@ class Robot:
         )
 
     def add_avoid(self, obj_id: str, margin_m: float) -> None:
-        self.persistent_avoid[obj_id] = _Avoid(obj_id, float(margin_m))
-        self.log("avoid_registered", obj=obj_id, margin_m=margin_m)
+        margin = float(margin_m)
+        if not 0.0 <= margin <= MAX_AVOID_MARGIN:  # also rejects NaN
+            raise SkillError(f"avoid margin_m must be between 0 and {MAX_AVOID_MARGIN:g} m")
+        self.persistent_avoid[obj_id] = _Avoid(obj_id, margin)
+        self.log("avoid_registered", obj=obj_id, margin_m=round(margin, 4))
 
 
 # ---------------------------------------------------------------------- program-facing API
@@ -722,6 +749,16 @@ class SkillAPI:
 
     def __init__(self, robot: Robot) -> None:
         self._robot = robot
+        self._calls = 0
+
+    def _charge(self, name: str) -> None:
+        """Count one skill call; past MAX_SKILL_CALLS the program is stopped with a SkillError."""
+        self._calls += 1
+        if self._calls > MAX_SKILL_CALLS:
+            raise SkillError(
+                f"too many skill calls: {name}() is call {self._calls}, and a program may make "
+                f"at most {MAX_SKILL_CALLS}"
+            )
 
     def pick(self, obj, avoid=None) -> None:
         """Pick up `obj` (an Obj from scene.objects) with a top-down grasp.
@@ -731,6 +768,7 @@ class SkillAPI:
         list of Obj: any lateral move that would pass near them goes over them (their height +
         0.10 m) and around them. Raises an error if the gripper already holds an object.
         """
+        self._charge("pick")
         if not isinstance(obj, Obj):
             raise SkillError(
                 f"pick expects one object from scene.objects (got {type(obj).__name__})"
@@ -743,6 +781,7 @@ class SkillAPI:
         Moves above a free spot in the bin at the transit height, descends, releases and lifts.
         `avoid` works as in pick. Raises an error if nothing is held.
         """
+        self._charge("place")
         if not isinstance(bin_name, str):
             raise SkillError("place expects a bin name string")
         self._robot.place(bin_name, avoid)
@@ -752,6 +791,7 @@ class SkillAPI:
 
         Low-level; prefer pick/place. Coordinates are world-frame (table top at z = 0.40).
         """
+        self._charge("move_to")
         self._robot.move_to(tuple(pose))
 
     def avoid(self, obj, margin_m=0.08) -> None:
@@ -759,6 +799,7 @@ class SkillAPI:
 
         Equivalent to passing avoid=obj to every later pick/place call.
         """
+        self._charge("avoid")
         for o in _as_obj_list(obj):
             self._robot.add_avoid(o.id, margin_m)
 

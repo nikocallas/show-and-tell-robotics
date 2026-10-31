@@ -1,0 +1,429 @@
+{
+ "_note": "Sample data - not a real run (web/dev-fixtures, for UI development only)",
+ "tasks": {
+  "task01_size": {
+   "video": {
+    "job_id": "bench-task01_size-video-20261030-160000",
+    "status": "verified",
+    "error": null,
+    "repairs": 1,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 18,
+      "total": 20,
+      "diagnosis": null
+     },
+     {
+      "n": 1,
+      "passed": 20,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     }
+    ],
+    "cost_usd": 0.41,
+    "wall_s": 655.2,
+    "agreement_pct": 96.25,
+    "agreement": {
+     "agree": 77,
+     "n": 80,
+     "undecided": 0,
+     "by_kind": {}
+    },
+    "spec": null,
+    "media_path": "keyframes",
+    "ref_first": [
+     18,
+     20
+    ],
+    "ref_final": [
+     20,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   },
+   "sentence": {
+    "job_id": "bench-task01_size-sentence-20261030-160000",
+    "status": "verified",
+    "error": null,
+    "repairs": 0,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 20,
+      "total": 20,
+      "diagnosis": null
+     }
+    ],
+    "cost_usd": 0.11,
+    "wall_s": 301.4,
+    "agreement_pct": null,
+    "agreement": null,
+    "spec": null,
+    "media_path": "none",
+    "ref_first": [
+     20,
+     20
+    ],
+    "ref_final": [
+     20,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   }
+  },
+  "task02_color": {
+   "video": {
+    "job_id": "bench-task02_color-video-20261030-160000",
+    "status": "verified",
+    "error": null,
+    "repairs": 0,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 20,
+      "total": 20,
+      "diagnosis": null
+     }
+    ],
+    "cost_usd": 0.24,
+    "wall_s": 402.9,
+    "agreement_pct": 95,
+    "agreement": {
+     "agree": 76,
+     "n": 80,
+     "undecided": 0,
+     "by_kind": {}
+    },
+    "spec": null,
+    "media_path": "keyframes",
+    "ref_first": [
+     20,
+     20
+    ],
+    "ref_final": [
+     20,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   },
+   "sentence": {
+    "job_id": "bench-task02_color-sentence-20261030-160000",
+    "status": "failed",
+    "error": null,
+    "repairs": 3,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 9,
+      "total": 20,
+      "diagnosis": null
+     },
+     {
+      "n": 1,
+      "passed": 10,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     },
+     {
+      "n": 2,
+      "passed": 10,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     },
+     {
+      "n": 3,
+      "passed": 11,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     }
+    ],
+    "cost_usd": 0.31,
+    "wall_s": 911,
+    "agreement_pct": null,
+    "agreement": null,
+    "spec": null,
+    "media_path": "none",
+    "ref_first": [
+     9,
+     20
+    ],
+    "ref_final": [
+     11,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   }
+  },
+  "task03_size_glass": {
+   "video": {
+    "job_id": "bench-task03_size_glass-video-20261030-160000",
+    "status": "verified",
+    "error": null,
+    "repairs": 1,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 3,
+      "total": 20,
+      "diagnosis": null
+     },
+     {
+      "n": 1,
+      "passed": 20,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     }
+    ],
+    "cost_usd": 0.58,
+    "wall_s": 612.5,
+    "agreement_pct": 93,
+    "agreement": {
+     "agree": 93,
+     "n": 100,
+     "undecided": 0,
+     "by_kind": {}
+    },
+    "spec": null,
+    "media_path": "keyframes",
+    "ref_first": [
+     3,
+     20
+    ],
+    "ref_final": [
+     20,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   },
+   "sentence": {
+    "job_id": "bench-task03_size_glass-sentence-20261030-160000",
+    "status": "failed",
+    "error": null,
+    "repairs": 3,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 4,
+      "total": 20,
+      "diagnosis": null
+     },
+     {
+      "n": 1,
+      "passed": 9,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     },
+     {
+      "n": 2,
+      "passed": 14,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     },
+     {
+      "n": 3,
+      "passed": 19,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     }
+    ],
+    "cost_usd": 0.52,
+    "wall_s": 1180.3,
+    "agreement_pct": null,
+    "agreement": null,
+    "spec": null,
+    "media_path": "none",
+    "ref_first": [
+     4,
+     20
+    ],
+    "ref_final": [
+     19,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   }
+  },
+  "task04_clear": {
+   "video": {
+    "job_id": "bench-task04_clear-video-20261030-160000",
+    "status": "verified",
+    "error": null,
+    "repairs": 2,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 5,
+      "total": 20,
+      "diagnosis": null
+     },
+     {
+      "n": 1,
+      "passed": 13,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     },
+     {
+      "n": 2,
+      "passed": 20,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     }
+    ],
+    "cost_usd": 0.9,
+    "wall_s": 1034,
+    "agreement_pct": 91,
+    "agreement": {
+     "agree": 91,
+     "n": 100,
+     "undecided": 0,
+     "by_kind": {}
+    },
+    "spec": null,
+    "media_path": "keyframes",
+    "ref_first": [
+     5,
+     20
+    ],
+    "ref_final": [
+     20,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   },
+   "sentence": {
+    "job_id": "bench-task04_clear-sentence-20261030-160000",
+    "status": "error",
+    "error": "WonderJSONError: no JSON object in the reply (sample)",
+    "repairs": 0,
+    "attempts": [],
+    "cost_usd": 0.05,
+    "wall_s": 40.2,
+    "agreement_pct": null,
+    "agreement": null,
+    "spec": null,
+    "media_path": "none"
+   }
+  },
+  "task05_shape": {
+   "video": {
+    "job_id": "bench-task05_shape-video-20261030-160000",
+    "status": "verified",
+    "error": null,
+    "repairs": 0,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 20,
+      "total": 20,
+      "diagnosis": null
+     }
+    ],
+    "cost_usd": 0.22,
+    "wall_s": 388.7,
+    "agreement_pct": 100,
+    "agreement": {
+     "agree": 80,
+     "n": 80,
+     "undecided": 0,
+     "by_kind": {}
+    },
+    "spec": null,
+    "media_path": "keyframes",
+    "ref_first": [
+     20,
+     20
+    ],
+    "ref_final": [
+     20,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   },
+   "sentence": {
+    "job_id": "bench-task05_shape-sentence-20261030-160000",
+    "status": "verified",
+    "error": null,
+    "repairs": 0,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 20,
+      "total": 20,
+      "diagnosis": null
+     }
+    ],
+    "cost_usd": 0.08,
+    "wall_s": 250,
+    "agreement_pct": null,
+    "agreement": null,
+    "spec": null,
+    "media_path": "none",
+    "ref_first": [
+     20,
+     20
+    ],
+    "ref_final": [
+     20,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   }
+  },
+  "task06_color_exc": {
+   "video": {
+    "status": "missing_video",
+    "video": "bench/videos/task06_color_exc.mp4"
+   },
+   "sentence": {
+    "job_id": "bench-task06_color_exc-sentence-20261030-160000",
+    "status": "failed",
+    "error": null,
+    "repairs": 3,
+    "attempts": [
+     {
+      "n": 0,
+      "passed": 0,
+      "total": 20,
+      "diagnosis": null
+     },
+     {
+      "n": 1,
+      "passed": 0,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     },
+     {
+      "n": 2,
+      "passed": 0,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     },
+     {
+      "n": 3,
+      "passed": 0,
+      "total": 20,
+      "diagnosis": "Sample diagnosis (not a real run)."
+     }
+    ],
+    "cost_usd": 0.29,
+    "wall_s": 955.5,
+    "agreement_pct": null,
+    "agreement": null,
+    "spec": null,
+    "media_path": "none",
+    "ref_first": [
+     0,
+     20
+    ],
+    "ref_final": [
+     0,
+     20
+    ],
+    "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n"
+   }
+  }
+ },
+ "updated_at": "2026-10-30 17:00:00",
+ "n_seeds": 20
+}

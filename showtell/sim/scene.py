@@ -185,7 +185,7 @@ CAMERA_POSES = {
     # name: (pos, target, fovy)
     "overhead": ((0.50, 0.0, TABLE_TOP_Z + 1.25), None, 45.0),
     "judge_angle": ((0.50, -0.95, TABLE_TOP_Z + 0.95), (0.50, 0.0, TABLE_TOP_Z + 0.08), 45.0),
-    "hero": ((1.55, -1.05, TABLE_TOP_Z + 0.85), (0.42, 0.02, TABLE_TOP_Z + 0.12), 40.0),
+    "hero": ((1.55, 1.15, TABLE_TOP_Z + 0.95), (0.40, 0.0, TABLE_TOP_Z + 0.20), 40.0),
 }
 
 

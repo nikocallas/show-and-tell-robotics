@@ -1,0 +1,12 @@
+.git
+.venv
+.env
+cache
+data
+third_party
+web
+**/__pycache__
+.pytest_cache
+.ruff_cache
+bench/videos/*.mp4
+bench/videos/*.mov

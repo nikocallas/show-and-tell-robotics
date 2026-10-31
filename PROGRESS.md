@@ -50,6 +50,24 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
   glass is a small disc SAM does not detect (it is found only once knocked over), so glass checks use the
   45° camera, where the box aspect (h/w) went 2.7 → 1.1 when the glass fell. SAM keeps object ids across the
   cut between the first 25 and last 25 frames. Cost: $0.0002/frame as documented.
+- SAM judge end to end (`verify/judge_sam.py`, real SAM, 6 task-3 scenes: 3 verified, 3 naive with the glass
+  knocked over): with the glass concept "light blue cylinder" SAM agreed with ground truth on 23/23 decided checks
+  (1 undecided: the fallen glass was not visible at the end); with "glass" every glass check was undecided. The judge
+  now uses "light blue cylinder". About $0.075 of SAM per judged scene.
+- Video path end to end on a stand-in clip (the robot doing task 3, overhead camera, 495 frames at 10 fps; a
+  human video is still needed for the Phase 3 acceptance): discovery listed the 4 cubes with correct sizes and the
+  glass; SAM tracked them; the spec from video mapped large → left_bin and small → right_bin (the reference
+  mapping; the sentence-only spec had it reversed); program verified 20/20. $0.92 total ($0.59 SAM for 6 concepts
+  x 495 frames). Rough edges on rendered video: SAM finds no "bowl" in the box-shaped sim bins (fallback: frame
+  thirds), "blue cube"/"green cube" also matched the same-colored bins (to filter by relative size), the glass
+  needs "light blue cylinder", and discovery's first reply ran past 8,000 tokens (the doubled budget fixed it).
+  The summary now drops static tracks that are really a bowl or bin (re-run on the cached SAM tracks of that
+  job: both bin tracks dropped, 8x and 10x the median object box).
+- No real Wonder repair yet: every generated first program so far passed its 20 seeds (tasks 1 and 3). On
+  task 3 Wonder uses `avoid(glass)` unprompted, so the planned "naive program hits the glass" failure does not
+  happen with this model; tightening the randomizer band cannot change that (the program avoids the glass in
+  every layout). The repair loop is exercised offline (real physics, Wonder test doubles) and by the
+  "given program" mode (a user-written program is verified and repaired). Spend so far: $1.74.
 
 ## Phase log
 
@@ -90,3 +108,30 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     `pytest -m slow tests/test_phase2_gate.py` (2 passed).
   - Fixes found by the gate: wrist-yaw choice near joint limits, fingers dragging a released
     cylinder, slot choice inside bins, forearm brushing the glass rim.
+- **Phase 3 — Perception and spec**: code **done**; acceptance **blocked on the human video**
+  `bench/videos/task03_size_glass.mp4`.
+  - `perception/video_prep.py` (normalize, 8 keyframes), `perception/track_summary.py` (Wonder discovery on 4
+    keyframes → one SAM request per concept → start/end centroids, moved, move order, end bowl; sizes from box
+    area; bowl/background tracks dropped), `agent/schemas.py`, `agent/prompts.py`, `agent/spec.py` (Wonder sees
+    the track summary + the video by `file_id` + the sentence + the sim vocabulary; `ensure_checks` adds a check
+    for every rule; `validate_spec` notes contradictions).
+  - Evidence until the video exists: stand-in clip job `20261031-141952-83de37` (spec from video correct) and
+    the `--no-video` spec for task 3 (job `20261031-141341-6cd01a`, mapping reversed).
+- **Phase 4 — Program generation and verification**: **done**.
+  - Generated task-1 program ran in the sandbox on 20 seeds: **20/20** with a report (job
+    `20261031-141431-892a1c`).
+  - Sandbox: AST whitelist (one `def run(scene)`, whitelisted calls with signatures taken from `skills.py`);
+    each seed runs in a spawned subprocess with a 120 s timeout, a 2 GB memory watchdog and a 200 skill-call
+    cap. `tests/test_sandbox.py` rejects imports, dunder access, while loops, lambdas, try/with, globals and
+    more (148 tests).
+- **Phase 5 — SAM judge, repair loop, full CLI**: code **done**; acceptance run **blocked on the human video**.
+  - `verify/judge_sam.py` (overhead + 45° clips → per-check verdicts; real SAM agreed 23/23 on task-3 scenes),
+    `verify/agreement.py`, `agent/repair.py` (failure report with the first contacts + 8 frames around the first
+    failure → Wonder diagnosis + patch, sandbox-checked with one retry), `pipeline.py`, `python -m showtell run`.
+  - Offline test: the naive size sort fails, the repair double adds `avoid`, 3/3 pass (real physics). A patch
+    rejected twice by the sandbox ends the job as "failed" with the reason logged.
+- **Phase 6 — API and web app**: code **done**; browser acceptance run next.
+  - FastAPI (`api/app.py`, `jobs.py`, `db.py`): jobs, SSE with resume, spec approval/edit, media with Range,
+    downloads; POST needs a token (or comes from this machine) and paid jobs stop at `SHOWTELL_BUDGET_USD`.
+  - Web (`web/`): new task, live job (spec card, attempt timeline, 20-scene grid, program diff, verified badge,
+    downloads), runs, benchmark, demo mode replaying `web/public/demo/`. 49 API tests; type-check and build pass.

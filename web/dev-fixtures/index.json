@@ -1,0 +1,18 @@
+{
+ "_note": "Sample data - not a real run (web/dev-fixtures, for UI development only)",
+ "jobs": [
+  {
+   "id": "sample-job",
+   "title": "Sample data - not a real run",
+   "rules": "Sort by size, and don't touch the glass.",
+   "task_id": "task03_size_glass",
+   "status": "verified",
+   "final_passed": 20,
+   "final_total": 20,
+   "attempts": 2,
+   "use_video": true,
+   "created_at": 1793372400,
+   "wall_seconds": 450
+  }
+ ]
+}
