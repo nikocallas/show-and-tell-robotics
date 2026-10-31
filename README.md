@@ -138,6 +138,9 @@ Demo mode replays recorded runs with no backend: `python -m showtell export-demo
 writes `web/public/demo/`, and `VITE_DEMO=1 npm run dev` (the default on Vercel) replays it.
 
 Docker (backend, CPU rendering): `docker build -t showtell . && docker run -p 8000:8000 --env-file .env showtell`.
+Requests from outside the container are not local, so set `SHOWTELL_API_TOKEN` in `.env`; POST requests
+then need `Authorization: Bearer <token>`. Jobs that would call the paid API stop at
+`SHOWTELL_BUDGET_USD` of logged spend.
 
 ## Repo layout
 
@@ -163,6 +166,15 @@ and the bins on the straight path from at least one object to a bin. A program t
 `avoid=glass` really sweeps the carried block or the hand through it: in Phase 2 the hand-written
 size sort without `avoid` knocked the glass over on 19/20 seeds, and with `avoid` it passed 20/20.
 Nothing is scripted: no failure is injected, and pass/fail always comes from the simulator.
+
+What Muse Wonder actually does here: its first program on task 3 calls `avoid(glass)` on every move,
+and even when the sentence never mentions the glass it adds untouched/upright checks for fragile
+objects and avoids them. So far task 3 has passed on the first try every time. The first real repair
+came on task 6 ("blue things stay where they are"): the first program avoided the blue cubes, and on
+one of 20 layouts the detour over a blue cube was out of the arm's reach, so the program stopped before
+placing anything. Wonder read the failure report and frames ("Avoiding the blue cubes forced an
+unreachable over-the-blue waypoint while carrying the red cube, aborting the program before
+placement."), dropped the detour for the short cubes, and the patch passed 20/20.
 
 ## Limitations
 
