@@ -1,0 +1,92 @@
+# Benchmark tasks. Each task lists the sim objects present and a hand-written reference spec that
+# encodes what the human demo video shows. The pipeline never sees `reference`: the benchmark uses it
+# to score whether the final program does the task the human meant (not just its own generated checks).
+#
+# Object ids: <color>_<shape>_<size>[_n]. Shapes: cube, cylinder, glass. Sizes: small (5 cm cube),
+# large (7 cm cube, 7 cm cylinder, 20 cm glass). Bins: left_bin, middle_bin, right_bin (robot's left = +y).
+
+- id: task01_size
+  video: task01_size.mp4
+  rules: "Sort by size: big ones in the left bowl, small ones in the right bowl."
+  objects: [red_cube_large, blue_cube_large, red_cube_small, green_cube_small]
+  demo: "Move both big blocks into the left bowl and both small blocks into the right bowl."
+  reference:
+    rules:
+      - {select: {size: large, fragile: false}, place_in: left_bin}
+      - {select: {size: small, fragile: false}, place_in: right_bin}
+    checks:
+      - {id: large_left, kind: in_bin, select: {size: large, fragile: false}, bin: left_bin, text: "Every large block ends in the left bin."}
+      - {id: small_right, kind: in_bin, select: {size: small, fragile: false}, bin: right_bin, text: "Every small block ends in the right bin."}
+
+- id: task02_color
+  video: task02_color.mp4
+  rules: "Sort by color, one bowl per color."
+  objects: [red_cube_large, red_cube_small, blue_cube_large, green_cube_small]
+  demo: "Red blocks into the left bowl, the blue block into the middle bowl, the green block into the right bowl."
+  reference:
+    rules:
+      - {select: {color: red}, place_in: left_bin}
+      - {select: {color: blue}, place_in: middle_bin}
+      - {select: {color: green}, place_in: right_bin}
+    checks:
+      - {id: red_left, kind: in_bin, select: {color: red}, bin: left_bin, text: "Every red object ends in the left bin."}
+      - {id: blue_middle, kind: in_bin, select: {color: blue}, bin: middle_bin, text: "Every blue object ends in the middle bin."}
+      - {id: green_right, kind: in_bin, select: {color: green}, bin: right_bin, text: "Every green object ends in the right bin."}
+
+- id: task03_size_glass
+  video: task03_size_glass.mp4
+  rules: "Sort by size, and don't touch the glass."
+  objects: [red_cube_large, blue_cube_large, red_cube_small, green_cube_small, clear_glass_large]
+  demo: "Big blocks into the left bowl, small blocks into the right bowl; carry them around the tall glass without touching it."
+  reference:
+    rules:
+      - {select: {size: large, fragile: false}, place_in: left_bin}
+      - {select: {size: small, fragile: false}, place_in: right_bin}
+      - {select: {shape: glass}, leave: true}
+    checks:
+      - {id: large_left, kind: in_bin, select: {size: large, fragile: false}, bin: left_bin, text: "Every large block ends in the left bin."}
+      - {id: small_right, kind: in_bin, select: {size: small, fragile: false}, bin: right_bin, text: "Every small block ends in the right bin."}
+      - {id: glass_untouched, kind: untouched, select: {shape: glass}, text: "Nothing touches the glass."}
+      - {id: glass_upright, kind: upright, select: {shape: glass}, text: "The glass is still standing."}
+
+- id: task04_clear
+  video: task04_clear.mp4
+  rules: "Clear everything into the middle bowl, but leave the glass alone."
+  objects: [red_cube_large, blue_cube_small, yellow_cylinder_large, clear_glass_large]
+  demo: "Every block and the yellow cylinder go into the middle bowl; the glass stays where it is."
+  reference:
+    rules:
+      - {select: {fragile: false}, place_in: middle_bin}
+      - {select: {shape: glass}, leave: true}
+    checks:
+      - {id: all_middle, kind: in_bin, select: {fragile: false}, bin: middle_bin, text: "Every non-fragile object ends in the middle bin."}
+      - {id: glass_untouched, kind: untouched, select: {shape: glass}, text: "Nothing touches the glass."}
+      - {id: glass_unmoved, kind: unmoved, select: {shape: glass}, text: "The glass stays where it started."}
+
+- id: task05_shape
+  video: task05_shape.mp4
+  rules: "Cylinders in the left bowl, cubes in the right bowl."
+  objects: [yellow_cylinder_large, yellow_cylinder_large_2, red_cube_small, blue_cube_large]
+  demo: "Both yellow cylinders into the left bowl, both blocks into the right bowl."
+  reference:
+    rules:
+      - {select: {shape: cylinder}, place_in: left_bin}
+      - {select: {shape: cube}, place_in: right_bin}
+    checks:
+      - {id: cylinders_left, kind: in_bin, select: {shape: cylinder}, bin: left_bin, text: "Every cylinder ends in the left bin."}
+      - {id: cubes_right, kind: in_bin, select: {shape: cube}, bin: right_bin, text: "Every cube ends in the right bin."}
+
+- id: task06_color_exc
+  video: task06_color_exc.mp4
+  rules: "Sort by color, but blue things stay where they are."
+  objects: [red_cube_large, green_cube_small, blue_cube_large, blue_cube_small]
+  demo: "The red block into the left bowl, the green block into the right bowl; both blue blocks stay put."
+  reference:
+    rules:
+      - {select: {color: red}, place_in: left_bin}
+      - {select: {color: green}, place_in: right_bin}
+      - {select: {color: blue}, leave: true}
+    checks:
+      - {id: red_left, kind: in_bin, select: {color: red}, bin: left_bin, text: "Every red object ends in the left bin."}
+      - {id: green_right, kind: in_bin, select: {color: green}, bin: right_bin, text: "Every green object ends in the right bin."}
+      - {id: blue_unmoved, kind: unmoved, select: {color: blue}, text: "Blue objects stay where they started."}
