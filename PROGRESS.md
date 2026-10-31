@@ -4,9 +4,8 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 
 ## Blocked on human
 
-1. **`MODEL_API_KEY`** — `.env` exists (copied from `.env.example`, `MUJOCO_GL=cgl` for this Mac) but the key is empty.
-   Sign in at https://dev.meta.ai → Billing (payment method or hackathon credits) → API keys → Create API key,
-   then set `MODEL_API_KEY=...` in `.env`. Blocks the Phase 0 acceptance check and every Wonder/SAM call after it.
+1. ~~`MODEL_API_KEY`~~ — added to `.env` on 2026-10-31. (It was also pasted into the chat; rotate it in
+   the dashboard after the hackathon.)
 2. **Demo videos** in `bench/videos/` (see `CLAUDE.md` 5.4): phone top-down ~80 cm above a plain table, good light,
    1080p, < 30 s, one continuous take per task. Stand-ins: blocks/cups in 2 sizes × 3 colors (red, blue, green),
    a yellow cylinder (marker cap / glue stick), a tall glass, 3 bowls in a row at the far edge.
@@ -31,11 +30,40 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 - Prices: Wonder $4/M in, $0.20/M cached in, $20/M out. SAM video $0.20 per 1,000 frames (≥ 50 frames/request),
   images $2.50 per 1,000. `usage.video_frames_processed` reports billed frames.
 
+## Observed API behaviour (real calls, 2026-10-31)
+
+- SAM 3.1 raw line for concept "red square" on a 960x720 clip (metadata include_confidence + one_bit):
+  `<0f>0<|box;x1=63;y1=300;x2=181;y2=419;w=960;h=720;c=0.9532163739204407|><|mask;x=0;y=0;c=0.9532163739204407;data=120,119,!!!!!8K.M22(1...|>`
+  One line per frame, ascending; 50 frames billed for a 50-frame clip; `meta-sam-parser` and our regex parse it identically.
+- Muse Wonder structured output (`text.format` json_schema) works on the Responses API.
+- Muse Wonder accepts `input_video` with a Files API `file_id`: a 50-frame 960x720 clip cost ~940 input tokens.
+  Reasoning counts against `max_output_tokens`: at effort "low" one video reply used 488 reasoning tokens and another
+  ran past 1,500 and came back empty (`incomplete: max_output_tokens`), so budgets must be generous.
+- First real spec + program (task 3, sentence only, effort high): valid spec in one call (1,360 in / 2,089 out
+  tokens, $0.047); without the video Wonder chose small → left, large → right (the reverse of the demo), so the
+  program passes its own checks 20/20 but the reference checks 0/20 — the gap the video is meant to close. The
+  first program already used `avoid(glass)` on every move ($0.031), so on task 3 this model may not need a repair.
+- SAM 3.1 on our rendered judge clips (640x480, 50 frames): "red cube"/"blue cube" tracked on all 50 frames
+  (c 0.91–0.95, ~30–43 px boxes); "green cube" also matched the green right_bin (108 px box) → the judge must
+  reject boxes much larger than the object's projected size. "glass", "drinking glass", "glass cup",
+  "transparent cylinder" found nothing; "light blue cylinder" finds the glass (c 0.94–0.96). Overhead, the standing
+  glass is a small disc SAM does not detect (it is found only once knocked over), so glass checks use the
+  45° camera, where the box aspect (h/w) went 2.7 → 1.1 when the glass fell. SAM keeps object ids across the
+  cut between the first 25 and last 25 frames. Cost: $0.0002/frame as documented.
+
 ## Phase log
 
-- **Phase 0 — Setup and API smoke test**: code in progress. Repo skeleton, config, CLI shell done;
-  `meta/` modules + `showtell smoke` being written with offline tests. Acceptance blocked on
-  `MODEL_API_KEY` (see above).
+- **Phase 0 — Setup and API smoke test**: **done** (2026-10-31).
+  - `python -m showtell smoke` passes every step against the real API ($0.02): Wonder text ("ready"),
+    Wonder JSON through `text.format` json_schema, Wonder video through `input_video` + `file_id` (no keyframe
+    fallback needed), SAM 3.1 tracking (1 track, 50 frames billed). `data/smoke_report.json` has `ok: true`.
+  - The SAM step used a synthetic 5 s clip (a red square sliding) because `bench/videos/smoke.mp4` (a hand
+    moving a block) is not filmed yet; with that file present it tracks "hand".
+  - `meta/`: OpenAI SDK client, Files upload cache (sha256 → file id), Wonder `call_json` (constrained JSON,
+    one validation retry, budget doubling when reasoning eats `max_output_tokens`, retries on mid-stream
+    server errors), SAM streaming per concept with both parsers, disk cache by request hash, usage log + cost.
+  - Deviation: `normalize` adds `-pix_fmt yuv420p` to the CLAUDE.md ffmpeg command so phone HDR clips stay
+    browser-playable 8-bit H.264.
 - **Phase 1 — Scene and rendering**: done.
   - `python -m showtell render-scene --seed 1` writes `data/render_scene/seed1_{overhead,judge_angle,hero}.png`
     and a 3 s `seed1_hero.mp4` (`--hd` renders the hero camera at 1280x720).
