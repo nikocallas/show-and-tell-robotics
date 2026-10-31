@@ -63,11 +63,21 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
   needs "light blue cylinder", and discovery's first reply ran past 8,000 tokens (the doubled budget fixed it).
   The summary now drops static tracks that are really a bowl or bin (re-run on the cached SAM tracks of that
   job: both bin tracks dropped, 8x and 10x the median object box).
-- No real Wonder repair yet: every generated first program so far passed its 20 seeds (tasks 1 and 3). On
-  task 3 Wonder uses `avoid(glass)` unprompted, so the planned "naive program hits the glass" failure does not
-  happen with this model; tightening the randomizer band cannot change that (the program avoids the glass in
-  every layout). The repair loop is exercised offline (real physics, Wonder test doubles) and by the
-  "given program" mode (a user-written program is verified and repaired). Spend so far: $1.74.
+- Task 3 never fails on the first try with this model: Wonder's program uses `avoid(glass)` every time. Even
+  with the glass left out of the sentence ("Sort by size: big ones in the left bowl, small ones in the right
+  bowl." on the task-3 scene), the spec added untouched/upright checks for fragile objects on its own and the
+  program avoided them: 20/20, nothing touched the glass; re-testing that program after adding "and don't touch
+  the glass" also passed 20/20 (jobs `rulechange-a/b-155206`, $0.11). Tightening the randomizer band cannot
+  change this (the program avoids the glass in every layout), so the planned "naive program hits the glass"
+  moment does not happen naturally on task 3.
+- First real repair (benchmark, task 6 sentence only, job `bench-task06_color_exc-sentence-20261031-154958`):
+  the first program avoided the blue cubes on every move; on seed 6004 the detour waypoint over a blue cube,
+  (0.271, -0.050, 0.550), was out of the arm's reach (IK error 2.2 cm), the program stopped before placing
+  anything and failed 19/20. Wonder's diagnosis: "Avoiding the blue cubes forced an unreachable over-the-blue
+  waypoint while carrying the red cube, aborting the program before placement." The patch dropped `avoid` for
+  the short blue cubes (the 0.12 m transit height already clears them): 20/20. Known limitation behind it:
+  `avoid` picks its detour waypoint without checking reachability; left as is so benchmark outcomes are not
+  tuned after the fact.
 
 ## Phase log
 
@@ -130,8 +140,25 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     failure → Wonder diagnosis + patch, sandbox-checked with one retry), `pipeline.py`, `python -m showtell run`.
   - Offline test: the naive size sort fails, the repair double adds `avoid`, 3/3 pass (real physics). A patch
     rejected twice by the sandbox ends the job as "failed" with the reason logged.
-- **Phase 6 — API and web app**: code **done**; browser acceptance run next.
+- **Phase 6 — API and web app**: **done** (2026-10-31).
+  - Browser run on fresh `uvicorn` + `npm run dev` (`.claude/launch.json`): uploaded the stand-in task-3 video,
+    the job paused with the spec from video (large → left, small → right, glass untouched/upright), approved in
+    the spec card, the 20-scene grid filled live over SSE, attempt 0 passed 20/20, VERIFIED badge; report.md,
+    report.json and program.py downloads return 200 as attachments; the scene view plays the hero video and shows
+    simulator vs SAM verdicts. SAM judge agreed 80/80 (job `20261031-154240-8ca2da`, $1.11 paid).
   - FastAPI (`api/app.py`, `jobs.py`, `db.py`): jobs, SSE with resume, spec approval/edit, media with Range,
     downloads; POST needs a token (or comes from this machine) and paid jobs stop at `SHOWTELL_BUDGET_USD`.
   - Web (`web/`): new task, live job (spec card, attempt timeline, 20-scene grid, program diff, verified badge,
     downloads), runs, benchmark, demo mode replaying `web/public/demo/`. 49 API tests; type-check and build pass.
+- **Phase 7 — Benchmark**: **half done**; the video condition is **blocked on the human videos**.
+  - `python -m showtell bench` ran all six tasks; the video condition records "no video" and re-runs once the
+    files exist (resumable). Sentence only, scored against the reference checks: tasks 1, 2, 4, 5 20/20; task 3
+    0/20 (bins reversed: small → left); task 6 0/20 (green → middle instead of right) after one real repair.
+    Total $0.42. `bench/results.{json,md}` and the README table are generated from these runs.
+- **Phase 8 — Demo mode, polish, deploy**: in progress.
+  - `showtell export-demo --job 20261031-154240-8ca2da` → `web/public/demo/` (17.4 MB); the Runs page and the
+    replay work in demo mode (`?demo=1`) with media served from the bundle.
+  - A 720p hero render is about 2 MB per scene (44 s), about 40 MB per 20-scene attempt.
+  - Not yet: Docker rebuild with the API, the Vercel deploy (needs your OK), the demo job choice (task 3 has no
+    real failure; task 6 has one).
+

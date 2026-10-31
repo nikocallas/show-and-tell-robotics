@@ -161,9 +161,9 @@ function DetailsCard({ state }: { state: JobState }) {
           />
           <Stat label="Wall time" value={formatDuration(wall)} />
           <Stat
-            label="API cost"
+            label="API cost (list price)"
             value={cost ? formatUsd(cost.usd) : "—"}
-            hint={cost ? `Wonder ${formatUsd(cost.wonder_usd)} · SAM ${formatUsd(cost.sam_usd)} · ${cost.calls} calls` : undefined}
+            hint={cost ? `Wonder ${formatUsd(cost.wonder_usd)} · SAM ${formatUsd(cost.sam_usd)} · ${cost.calls} calls; reruns hit the local cache` : undefined}
           />
           <Stat
             label="Judge agreement"

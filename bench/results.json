@@ -1,0 +1,618 @@
+{
+  "tasks": {
+    "task01_size": {
+      "video": {
+        "status": "missing_video",
+        "video": "bench/videos/task01_size.mp4"
+      },
+      "sentence": {
+        "job_id": "bench-task01_size-sentence-20261031-154658",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 0.0457,
+        "wall_s": 18.9,
+        "agreement_pct": null,
+        "agreement": null,
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "right_bin",
+              "leave": false
+            }
+          ],
+          "checks": [
+            {
+              "id": "large_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All large objects are in the left bin."
+            },
+            {
+              "id": "small_in_right_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "right_bin",
+              "text": "All small objects are in the right bin."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The sentence explicitly sorts by size, mapping big objects to the left bowl and small objects to the right bowl, so large objects go to left_bin and small objects go to right_bin. All objects present are non-fragile cubes in both sizes, so the two size-based rules cover every object with no leave or fragile constraints needed."
+        },
+        "media_path": "none",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(size=\"small\"):\n        pick(obj)\n        place(\"right_bin\")\n"
+      }
+    },
+    "task02_color": {
+      "video": {
+        "status": "missing_video",
+        "video": "bench/videos/task02_color.mp4"
+      },
+      "sentence": {
+        "job_id": "bench-task02_color-sentence-20261031-154723",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 0.0532,
+        "wall_s": 30.1,
+        "agreement_pct": null,
+        "agreement": null,
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "middle_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "right_bin",
+              "leave": false
+            }
+          ],
+          "checks": [
+            {
+              "id": "red_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All red objects are in the left bin."
+            },
+            {
+              "id": "blue_in_middle_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "middle_bin",
+              "text": "All blue objects are in the middle bin."
+            },
+            {
+              "id": "green_in_right_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "right_bin",
+              "text": "All green objects are in the right bin."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The sentence says to sort by color with one bowl per color, and the scene contains red, blue, and green cubes with three bins available. I assigned red to the left bin, blue to the middle bin, and green to the right bin as a reasonable one-color-per-bin mapping since no specific bin was named. No fragile objects or leave constraints are present in the scene or sentence."
+        },
+        "media_path": "none",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"blue\"):\n        pick(obj)\n        place(\"middle_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"right_bin\")\n"
+      }
+    },
+    "task03_size_glass": {
+      "video": {
+        "status": "missing_video",
+        "video": "bench/videos/task03_size_glass.mp4"
+      },
+      "sentence": {
+        "job_id": "bench-task03_size_glass-sentence-20261031-154759",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 0.0777,
+        "wall_s": 26.9,
+        "agreement_pct": null,
+        "agreement": null,
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "place_in": "right_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "place_in": null,
+              "leave": true
+            }
+          ],
+          "checks": [
+            {
+              "id": "small_cubes_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "bin": "left_bin",
+              "text": "All small non-fragile cubes are in the left bin."
+            },
+            {
+              "id": "large_cubes_in_right_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "bin": "right_bin",
+              "text": "All large non-fragile cubes are in the right bin."
+            },
+            {
+              "id": "glass_untouched",
+              "kind": "untouched",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The clear glass has not been touched."
+            },
+            {
+              "id": "glass_upright",
+              "kind": "upright",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The clear glass is standing upright."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The sentence asks to sort by size while not touching the glass, so small and large objects go to separate bins and the glass is left alone. Since no bins were named, small non-fragile cubes were assigned to the left bin and large non-fragile cubes to the right bin, with fragile set to false on the moving rules to exclude the large fragile glass."
+        },
+        "media_path": "none",
+        "ref_first": [
+          0,
+          20
+        ],
+        "ref_final": [
+          0,
+          20
+        ],
+        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(size=\"small\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"left_bin\", avoid=glasses)\n    for obj in scene.objects(size=\"large\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"right_bin\", avoid=glasses)\n"
+      }
+    },
+    "task04_clear": {
+      "video": {
+        "status": "missing_video",
+        "video": "bench/videos/task04_clear.mp4"
+      },
+      "sentence": {
+        "job_id": "bench-task04_clear-sentence-20261031-154836",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 0.0627,
+        "wall_s": 39.3,
+        "agreement_pct": null,
+        "agreement": null,
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "place_in": "middle_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "place_in": null,
+              "leave": true
+            }
+          ],
+          "checks": [
+            {
+              "id": "objects_in_middle_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "bin": "middle_bin",
+              "text": "All non-fragile objects are in the middle bin."
+            },
+            {
+              "id": "glass_untouched",
+              "kind": "untouched",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The glass is untouched."
+            },
+            {
+              "id": "glass_upright",
+              "kind": "upright",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The glass is upright."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The sentence says to clear everything into the middle bowl, so all non-fragile objects are assigned to middle_bin with fragile false to exclude the fragile glass. The glass is explicitly left alone, so it has a leave rule with untouched and upright checks. No video was available, so the bin assignment comes directly from the sentence."
+        },
+        "media_path": "none",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"middle_bin\", avoid=glasses)\n"
+      }
+    },
+    "task05_shape": {
+      "video": {
+        "status": "missing_video",
+        "video": "bench/videos/task05_shape.mp4"
+      },
+      "sentence": {
+        "job_id": "bench-task05_shape-sentence-20261031-154922",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 0.043,
+        "wall_s": 30.0,
+        "agreement_pct": null,
+        "agreement": null,
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cylinder",
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cube",
+                "fragile": null
+              },
+              "place_in": "right_bin",
+              "leave": false
+            }
+          ],
+          "checks": [
+            {
+              "id": "cylinders_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cylinder",
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All cylinders are in the left bowl."
+            },
+            {
+              "id": "cubes_in_right_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cube",
+                "fragile": null
+              },
+              "bin": "right_bin",
+              "text": "All cubes are in the right bowl."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "No video was available, so the spec was built from the sentence alone. The sentence assigns cylinders to the left bowl (left_bin) and cubes to the right bowl (right_bin), which covers all objects present."
+        },
+        "media_path": "none",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(shape=\"cylinder\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(shape=\"cube\"):\n        pick(obj)\n        place(\"right_bin\")\n"
+      }
+    },
+    "task06_color_exc": {
+      "video": {
+        "status": "missing_video",
+        "video": "bench/videos/task06_color_exc.mp4"
+      },
+      "sentence": {
+        "job_id": "bench-task06_color_exc-sentence-20261031-154958",
+        "status": "verified",
+        "error": null,
+        "repairs": 1,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 19,
+            "total": 20,
+            "diagnosis": null
+          },
+          {
+            "n": 1,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": "Avoiding the blue cubes forced an unreachable over-the-blue waypoint while carrying the red cube, aborting the program before placement."
+          }
+        ],
+        "cost_usd": 0.1394,
+        "wall_s": 70.0,
+        "agreement_pct": null,
+        "agreement": null,
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "middle_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": null,
+              "leave": true
+            }
+          ],
+          "checks": [
+            {
+              "id": "red_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All red objects are in the left bin."
+            },
+            {
+              "id": "green_in_middle_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "middle_bin",
+              "text": "All green objects are in the middle bin."
+            },
+            {
+              "id": "blue_unmoved",
+              "kind": "unmoved",
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": null,
+              "text": "All blue objects remain where they started on the table."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The sentence says to sort by color, so red and green objects each get their own bin, assigned to the left and middle bins respectively because the sentence does not name specific bins. Blue objects are the stated exception, so they are left in place with an unmoved check."
+        },
+        "media_path": "none",
+        "ref_first": [
+          0,
+          20
+        ],
+        "ref_final": [
+          0,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"middle_bin\")\n"
+      }
+    }
+  },
+  "updated_at": "2026-10-31 15:51:13",
+  "n_seeds": 20
+}
