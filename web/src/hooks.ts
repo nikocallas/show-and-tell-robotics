@@ -3,16 +3,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DependencyList } from "react";
 import {
   ApiError,
+  getBench,
   getJob,
+  getTasks,
   liveMediaUrl,
   postSpec,
   subscribeEvents,
   type StreamStatus,
 } from "./api";
-import { demoMediaUrl, loadDemoJob, replayDelays, Replayer, type DemoBundle, type Speed } from "./demo";
+import {
+  demoMediaUrl,
+  loadDemoBench,
+  loadDemoJob,
+  loadDemoTasks,
+  replayDelays,
+  Replayer,
+  type DemoBundle,
+  type Speed,
+} from "./demo";
 import {
   completeJob,
   eventKey,
+  failureFramesFromApi,
   initialJobState,
   isTerminal,
   metaFromReport,
@@ -23,7 +35,7 @@ import {
   stateFromSnapshot,
   type JobState,
 } from "./state";
-import type { ApiJobResponse, PipelineEvent, TaskSpec } from "./types";
+import type { ApiJobResponse, BenchRow, PipelineEvent, TaskPreset, TaskSpec } from "./types";
 
 export type MediaResolver = (path: string | null | undefined) => string | undefined;
 
@@ -115,6 +127,8 @@ export function useLiveJob(id: string): LiveJob {
         if (ev.type === "job_done") {
           stop();
           void refresh(); // final snapshot carries the report and media URLs
+        } else if (ev.type === "repair_done") {
+          void refresh(); // the snapshot lists the frames the repair call was sent
         }
       },
       setStream,
@@ -143,6 +157,7 @@ export function useLiveJob(id: string): LiveJob {
         s = completeJob(s, snapStatus, snapshot.report); // the stream missed the end
       }
       if (snapshot.job.video) s = { ...s, videoPath: snapshot.job.video };
+      s = { ...s, failureFrames: failureFramesFromApi(snapshot.attempts) };
     }
     return s;
   }, [id, snapshot, events]);
@@ -171,6 +186,8 @@ export function useLiveJob(id: string): LiveJob {
 // ------------------------------------------------------------------ demo replay
 export interface ReplayJob {
   state: JobState | null;
+  /** The whole recording, for facts that do not depend on how far the replay has got. */
+  recording: JobState | null;
   bundle: DemoBundle | null;
   loading: boolean;
   notFound: boolean;
@@ -233,15 +250,27 @@ export function useReplayJob(id: string): ReplayJob {
     [bundle, id],
   );
 
-  const state = useMemo<JobState | null>(() => {
-    if (!bundle || !base) return null;
-    if (bundle.events.length === 0) return bundle.report ? stateFromReport(id, bundle.report) : null;
-    let s = reduceEvents(bundle.events.slice(0, cursor), base);
-    if (cursor >= bundle.events.length && bundle.report && !s.report) {
-      s = completeJob(s, normalizeStatus(bundle.report.status, "failed"), bundle.report);
-    }
-    return s;
-  }, [bundle, base, cursor, id]);
+  /** The run after `upTo` events (the whole recording when upTo >= the event count). */
+  const stateAt = useCallback(
+    (upTo: number): JobState | null => {
+      if (!bundle || !base) return null;
+      let s: JobState;
+      if (bundle.events.length === 0) {
+        if (!bundle.report) return null;
+        s = stateFromReport(id, bundle.report);
+      } else {
+        s = reduceEvents(bundle.events.slice(0, upTo), base);
+        if (upTo >= bundle.events.length && bundle.report && !s.report) {
+          s = completeJob(s, normalizeStatus(bundle.report.status, "failed"), bundle.report);
+        }
+      }
+      // Shown under the repair they fed, so they appear when the replay reaches that repair.
+      return { ...s, failureFrames: bundle.failureFrames };
+    },
+    [bundle, base, id],
+  );
+  const state = useMemo(() => stateAt(cursor), [stateAt, cursor]);
+  const recording = useMemo(() => stateAt(Number.POSITIVE_INFINITY), [stateAt]);
 
   const events = bundle?.events ?? [];
   const t0 = events.length ? events[0].ts : 0;
@@ -257,6 +286,7 @@ export function useReplayJob(id: string): ReplayJob {
 
   return {
     state,
+    recording,
     bundle,
     loading,
     notFound: !loading && (!bundle || (!bundle.report && bundle.events.length === 0)),
@@ -273,4 +303,30 @@ export function useReplayJob(id: string): ReplayJob {
     setSpeed,
     media,
   };
+}
+
+// ------------------------------------------------------------------ task context
+export interface TaskContext {
+  /** The benchmark task preset (bench/tasks.yaml via /api/tasks or demo/tasks.json). */
+  preset: TaskPreset | null;
+  /** The task's row of bench/results.json. */
+  bench: BenchRow | null;
+}
+
+const NO_CONTEXT: TaskContext = { preset: null, bench: null };
+
+/** The preset and benchmark results for a job's task: the demo bundle for replays, else the API. */
+export function useTaskContext(source: "live" | "replay", taskId: string | null): TaskContext {
+  const res = useAsync<TaskContext>(async () => {
+    if (!taskId) return NO_CONTEXT;
+    const [presets, bench] = await Promise.all([
+      (source === "replay" ? loadDemoTasks() : getTasks()).catch((): TaskPreset[] => []),
+      (source === "replay" ? loadDemoBench() : getBench()).catch(() => null),
+    ]);
+    return {
+      preset: presets.find((p) => p.id === taskId) ?? null,
+      bench: bench?.tasks.find((r) => r.task === taskId) ?? null,
+    };
+  }, [source, taskId]);
+  return res.data ?? NO_CONTEXT;
 }

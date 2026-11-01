@@ -1,7 +1,16 @@
 /** The pipeline as a stepper: prep, discover, track, spec, program, verify, judge, repair, report. */
 
+import { useEffect, useRef } from "react";
 import { formatDuration } from "../lib/format";
-import { attemptCounts, lastAttempt, STAGES, type JobState, type StageKey, type StageState } from "../state";
+import {
+  attemptCounts,
+  lastAttempt,
+  stageCached,
+  STAGES,
+  type JobState,
+  type StageKey,
+  type StageState,
+} from "../state";
 import { IconAlert, IconCheck, IconMinus, Spinner } from "./icons";
 import { cx } from "./ui";
 
@@ -9,13 +18,26 @@ const LABELS: Record<StageKey, { label: string; hint: string }> = {
   prep: { label: "Prep", hint: "Normalize the demo video and pick keyframes" },
   discover: { label: "Discover", hint: "Muse Wonder lists the objects in the video" },
   track: { label: "Track", hint: "SAM 3.1 tracks the hand and every object" },
-  spec: { label: "Spec", hint: "Rules and pass/fail checks, approved by you" },
+  spec: { label: "Spec", hint: "Rules and pass/fail checks, approved before the program is written" },
   program: { label: "Program", hint: "Muse Wonder writes the robot program" },
   verify: { label: "Verify", hint: "Run the program on randomized simulated scenes" },
   judge: { label: "Judge", hint: "SAM 3.1 checks the rendered scenes" },
   repair: { label: "Repair", hint: "Diagnose failures and patch the program" },
   report: { label: "Report", hint: "Test report and full attempt log" },
 };
+
+const CACHED_HINT =
+  "Served from the local response cache: Muse Wonder had already answered this exact request, so the stage took no time and made no new API call.";
+
+function hint(key: StageKey, state: JobState): string {
+  if (key === "spec") {
+    if (state.specApproved && state.specAutoApproved) {
+      return "Rules and pass/fail checks. This run approved the spec automatically, without review (benchmark and non-interactive runs do)";
+    }
+    if (state.sawAwaitingApproval) return "Rules and pass/fail checks, reviewed and approved before the program is written";
+  }
+  return LABELS[key].hint;
+}
 
 const BAR: Record<StageState["status"], string> = {
   pending: "bg-zinc-200",
@@ -26,36 +48,40 @@ const BAR: Record<StageState["status"], string> = {
   error: "bg-rose-500",
 };
 
-function subText(key: StageKey, st: StageState, state: JobState): string {
+/** The line under a stage label; `wide` is extra text shown from the sm breakpoint up. */
+function subText(key: StageKey, st: StageState, state: JobState): { text: string; wide?: string } {
   const last = lastAttempt(state);
   switch (st.status) {
     case "pending":
-      return "";
+      return { text: "" };
     case "skipped":
-      return "Skipped";
+      return { text: "Skipped" };
     case "error":
-      return "Failed";
+      return { text: "Failed" };
     case "waiting":
-      return "Needs approval";
+      return { text: "Needs approval" };
     case "running": {
       if (key === "verify" && last) {
         const c = attemptCounts(last, state.nSeeds);
-        return `${c.done}/${c.total} scenes`;
+        return { text: `${c.done}/${c.total} scenes` };
       }
       if (key === "judge" && last) {
         const judged = Object.keys(last.sam).length;
-        return `${judged}/${last.seeds.length || state.nSeeds} judged`;
+        return { text: `${judged}/${last.seeds.length || state.nSeeds} judged` };
       }
-      if (key === "repair" && st.attempt != null) return `Round ${st.attempt}`;
-      return "Running";
+      if (key === "repair" && st.attempt != null) return { text: `Round ${st.attempt}` };
+      return { text: "Running" };
     }
     case "done": {
-      const t = st.seconds > 0 ? formatDuration(st.seconds) : "Done";
       const rounds = state.attempts.filter((a) => a.kind === "repair").length;
-      if (key === "repair" && rounds > 0) return `${rounds} round${rounds === 1 ? "" : "s"}`;
-      if ((key === "verify" || key === "judge") && state.attempts.length > 1)
-        return `${t} total`;
-      return t;
+      const cached = stageCached(state, key);
+      if (key === "repair" && rounds > 0) {
+        return { text: `${rounds} round${rounds === 1 ? "" : "s"}`, wide: cached ? ", cached" : undefined };
+      }
+      if (cached) return { text: "Cached" };
+      const t = st.seconds > 0 ? formatDuration(st.seconds) : "Done";
+      if ((key === "verify" || key === "judge") && state.attempts.length > 1) return { text: t, wide: " total" };
+      return { text: t };
     }
   }
 }
@@ -77,15 +103,48 @@ function StageIcon({ status }: { status: StageState["status"] }) {
   }
 }
 
+/** The stage to keep in view on narrow screens: the active one, else the last one reached. */
+function focusStage(state: JobState): StageKey | null {
+  const active = STAGES.find((k) => ["running", "waiting"].includes(state.stages[k].status));
+  if (active) return active;
+  const reached = STAGES.filter((k) => ["done", "error"].includes(state.stages[k].status));
+  return reached[reached.length - 1] ?? null;
+}
+
 export function StageStrip({ state }: { state: JobState }) {
+  const navRef = useRef<HTMLElement>(null);
+  const focus = focusStage(state);
+
+  // Narrow screens scroll the strip sideways: keep the current stage visible (horizontally only,
+  // so the page itself never jumps).
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || !focus || nav.scrollWidth <= nav.clientWidth) return;
+    const item = nav.querySelector<HTMLElement>(`[data-stage="${focus}"]`);
+    if (!item) return;
+    const left = item.offsetLeft - (nav.clientWidth - item.offsetWidth) / 2;
+    nav.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [focus]);
+
   return (
-    <nav aria-label="Pipeline stages" className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
+    <nav
+      ref={navRef}
+      aria-label="Pipeline stages"
+      className="relative -mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 sm:pb-0"
+    >
       <ol className="grid min-w-[720px] grid-cols-9 gap-2">
         {STAGES.map((key) => {
           const st = state.stages[key];
           const active = st.status === "running" || st.status === "waiting";
+          const cached = stageCached(state, key);
+          const sub = subText(key, st, state);
           return (
-            <li key={key} title={LABELS[key].hint} className="min-w-0">
+            <li
+              key={key}
+              data-stage={key}
+              title={cached ? `${hint(key, state)}. ${CACHED_HINT}` : hint(key, state)}
+              className="min-w-0"
+            >
               <div className={cx("h-1 rounded-full", BAR[st.status])} />
               <div className="mt-2 flex items-center gap-1.5">
                 <span className="flex h-4 w-4 items-center justify-center">
@@ -101,7 +160,8 @@ export function StageStrip({ state }: { state: JobState }) {
                 </span>
               </div>
               <div className="mt-0.5 h-4 truncate pl-[22px] text-[11px] tabular-nums text-zinc-500">
-                {subText(key, st, state)}
+                {sub.text}
+                {sub.wide && <span className="hidden sm:inline">{sub.wide}</span>}
               </div>
             </li>
           );

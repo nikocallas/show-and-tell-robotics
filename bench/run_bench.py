@@ -123,6 +123,34 @@ def _agreement(entry: dict | None) -> str:
     return "—" if pct is None else f"{min(round(pct), 99) if pct < 100 else 100}%"
 
 
+def _sentence_cell(entry: dict | None) -> str:
+    """Sentence-only final rate, with the number of repairs it took when there were any."""
+    cell = _rate(entry, "ref_final")
+    repairs = int((entry or {}).get("repairs") or 0)
+    if repairs and "/" in cell:
+        cell += f" ({repairs} repair{'' if repairs == 1 else 's'})"
+    return cell
+
+
+def own_check_gaps(results: dict[str, Any]) -> list[str]:
+    """One line per run whose final program passes its own generated checks more often than the
+    reference checks (the spec it wrote differs from what the demo shows)."""
+    lines = []
+    for task_id, conds in results.get("tasks", {}).items():
+        for cond in CONDITIONS:
+            e = conds.get(cond) or {}
+            attempts, ref = e.get("attempts") or [], e.get("ref_final")
+            if not attempts or not ref or attempts[-1]["passed"] == ref[0]:
+                continue
+            label = "sentence only" if cond == "sentence" else "video"
+            own = f"{attempts[-1]['passed']}/{attempts[-1]['total']}"
+            lines.append(
+                f"- {task_id} ({label}): {own} on its own checks, {ref[0]}/{ref[1]} on the "
+                "reference checks."
+            )
+    return lines
+
+
 def table_rows(results: dict[str, Any]) -> list[list[str]]:
     rows = []
     for task_id, conds in results.get("tasks", {}).items():
@@ -134,7 +162,7 @@ def table_rows(results: dict[str, Any]) -> list[list[str]]:
                 _rate(v, "ref_first"),
                 _rate(v, "ref_final"),
                 str(v["repairs"]) if v and "repairs" in v else "—",
-                _rate(s, "ref_final"),
+                _sentence_cell(s),
                 _agreement(v),
                 f"{cost:.2f}",
                 f"{(v or {}).get('wall_s', 0) / 60:.1f} min" if v and v.get("wall_s") else "—",
@@ -151,11 +179,20 @@ def results_markdown(results: dict[str, Any]) -> str:
     lines += [
         "",
         f"Pass rates are k/{n} randomized scenes, scored against each task's reference checks "
-        "(bench/tasks.yaml). First try = the first generated program; Final = after up to 3 "
-        "repairs. Sentence only = the same pipeline without the demo video. Judge agreement = "
-        "SAM 3.1 on the "
-        "rendered clips vs simulator ground truth. Cost covers both conditions at list price.",
+        "(bench/tasks.yaml), which encode what each task's demo video shows (the shot list in "
+        "bench/videos/README.md): a run can pass every check in the spec it generated and still "
+        "score lower here. First try = the first generated "
+        "program; Final = after up to 3 repairs (sentence-only repairs in brackets). Sentence "
+        "only = the same pipeline without the demo video and without the SAM judge (simulator "
+        'ground truth only). "no video" = the human demo video for the task is not recorded '
+        "yet, so the video condition has not run. Judge agreement = SAM 3.1 on the rendered "
+        "clips vs simulator ground truth (video condition). Cost $ = list price of the Meta API "
+        "calls each run made, summed over the conditions that ran; responses served from the "
+        "local cache are counted at list price but billed $0.",
     ]
+    gaps = own_check_gaps(results)
+    if gaps:
+        lines += ["", "Own checks vs reference checks:", "", *gaps]
     if results.get("updated_at"):
         lines.append(f"\nUpdated {results['updated_at']}.")
     return "\n".join(lines) + "\n"

@@ -73,9 +73,10 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
   change this (the program avoids the glass in every layout), so the planned "naive program hits the glass"
   moment does not happen naturally on task 3.
 - First real repair (benchmark, task 6 sentence only, job `bench-task06_color_exc-sentence-20261031-154958`):
-  the first program avoided the blue cubes on every move; on seed 6004 the detour waypoint over a blue cube,
-  (0.271, -0.050, 0.550), was out of the arm's reach (IK error 2.2 cm), the program stopped before placing
-  anything and failed 19/20. Wonder's diagnosis: "Avoiding the blue cubes forced an unreachable over-the-blue
+  the first program avoided the blue cubes on every move; on seed 6004, carrying the red cube, the straight path
+  passed 6 mm from the small blue cube, so `avoid` raised it to z = 0.55 m with a detour point beside the cube;
+  the leg toward that point ran through (0.271, -0.050, 0.550), which the arm cannot reach (IK error 2.2 cm), so
+  the program stopped before placing anything and failed 19/20. Wonder's diagnosis: "Avoiding the blue cubes forced an unreachable over-the-blue
   waypoint while carrying the red cube, aborting the program before placement." The patch dropped `avoid` for
   the short blue cubes (the 0.12 m transit height already clears them): 20/20. Known limitation behind it:
   `avoid` picks its detour waypoint without checking reachability; left as is so benchmark outcomes are not

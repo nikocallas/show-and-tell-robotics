@@ -143,11 +143,15 @@ def render_demo(
 def export_demo(
     job: str = typer.Option(..., "--job", help="Job id (API database) or a run folder"),
     out: Path = typer.Option(Path("web/public/demo"), help="Demo bundle folder"),
+    title: str | None = typer.Option(None, help="Short title for the run in the hosted demo"),
+    note: str | None = typer.Option(
+        None, help="How the run was made (e.g. stand-in video, cached responses); shown with it"
+    ),
 ) -> None:
     """Export a finished job as static JSON + media for the web app's demo mode."""
     from showtell.api.export_demo import export_demo as _export
 
-    _export(job, out)
+    _export(job, out, title=title, note=note)
 
 
 @app.command()

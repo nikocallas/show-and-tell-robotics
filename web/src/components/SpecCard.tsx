@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  BIN_COLORS,
+  binColor,
   binLabel,
+  binWithColor,
   checkSentence,
   describeSelector,
   kindLabel,
@@ -45,7 +48,11 @@ export interface SpecCardProps {
   clarifyingQuestion: string | null;
   awaiting: boolean;
   approved: boolean;
+  /** Approved without anyone reviewing it (the run never paused for approval). */
+  autoApproved?: boolean;
   edited: boolean;
+  /** A recorded run: nobody can approve it here. */
+  replay?: boolean;
   /** Live jobs only: approve as proposed (null) or send the edited spec. */
   onApprove?: (spec: TaskSpec | null) => Promise<void>;
   /** Shown while there is no spec yet. */
@@ -112,7 +119,7 @@ function uniqueId(base: string, taken: string[]): string {
 }
 
 // ------------------------------------------------------------------ small pieces
-/** Three bins left to right; the target is filled. */
+/** Three bins left to right (the robot's view) in their render colours; the target is filled. */
 function BinTag({ rule }: { rule: Rule }) {
   if (rule.leave || !rule.place_in) {
     return (
@@ -121,20 +128,28 @@ function BinTag({ rule }: { rule: Rule }) {
       </span>
     );
   }
+  const target = rule.place_in;
   return (
-    <span className="inline-flex items-center gap-1.5" title={binLabel(rule.place_in)}>
+    <span
+      className="inline-flex items-center gap-1.5"
+      title={`${binWithColor(target)}. Bins left to right as the robot sees them, in their colours in the videos.`}
+    >
       <span className="flex gap-0.5" aria-hidden="true">
         {BINS.map((b) => (
           <span
             key={b}
-            className={cx(
-              "h-3 w-3.5 rounded-[3px] border",
-              b === rule.place_in ? "border-accent-600 bg-accent-500" : "border-zinc-300 bg-white",
-            )}
+            className={cx("h-3 w-3.5 rounded-[3px] border", b !== target && "bg-white opacity-50")}
+            style={{
+              borderColor: BIN_COLORS[b].css,
+              backgroundColor: b === target ? BIN_COLORS[b].css : undefined,
+            }}
           />
         ))}
       </span>
-      <span className="text-[11px] font-medium text-zinc-500">{binLabel(rule.place_in).replace(" bin", "")}</span>
+      <span className="text-[11px] font-medium text-zinc-500">
+        {binLabel(target).replace(" bin", "")}
+        <span className="font-normal text-zinc-400"> · {binColor(target)?.name}</span>
+      </span>
     </span>
   );
 }
@@ -310,7 +325,9 @@ export function SpecCard({
   clarifyingQuestion,
   awaiting,
   approved,
+  autoApproved = false,
   edited,
+  replay = false,
   onApprove,
   pendingText,
   readOnlyNote,
@@ -354,16 +371,25 @@ export function SpecCard({
 
   const question = clarifyingQuestion ?? spec?.clarifying_question ?? null;
   const statusChip = approved ? (
-    <Chip tone="success" icon={<IconCheck size={12} strokeWidth={2.6} />}>
-      {edited ? "Approved with edits" : "Approved"}
-    </Chip>
+    autoApproved && !edited ? (
+      <Chip
+        tone="neutral"
+        title="This run did not pause for anyone to review the spec before the program was written"
+      >
+        Auto-approved (not reviewed)
+      </Chip>
+    ) : (
+      <Chip tone="success" icon={<IconCheck size={12} strokeWidth={2.6} />}>
+        {edited ? "Approved with edits" : "Approved"}
+      </Chip>
+    )
   ) : sent ? (
     <Chip tone="accent" icon={<Spinner size={11} />}>
       Approving
     </Chip>
   ) : awaiting ? (
     <Chip tone="warning" icon={<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}>
-      Needs your approval
+      {replay ? "Awaiting approval (recorded)" : "Needs your approval"}
     </Chip>
   ) : null;
   const sourceChip = source ? (
@@ -498,7 +524,19 @@ export function SpecCard({
                     {c.text || checkSentence(c)}
                     <span className="block text-xs text-zinc-400">
                       {describeSelector(c.select)}
-                      {c.kind === "in_bin" && c.bin ? ` · ${binLabel(c.bin)}` : ""}
+                      {c.kind === "in_bin" && c.bin ? (
+                        <>
+                          {" · "}
+                          {binColor(c.bin) && (
+                            <span
+                              aria-hidden="true"
+                              className="mr-1 inline-block h-2 w-2 rounded-[2px] align-[-1px]"
+                              style={{ backgroundColor: binColor(c.bin)?.css }}
+                            />
+                          )}
+                          {binWithColor(c.bin)}
+                        </>
+                      ) : null}
                     </span>
                   </span>
                   <code className="hidden shrink-0 pt-0.5 font-mono text-[11px] text-zinc-400 sm:block">{c.id}</code>

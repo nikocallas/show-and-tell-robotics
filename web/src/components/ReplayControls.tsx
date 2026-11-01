@@ -59,8 +59,11 @@ export function ReplayControls({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between text-[11px] text-zinc-400">
-            <span className="truncate">{finished ? "Replay finished" : "Replaying a recorded run"}</span>
-            <span className="ml-2 shrink-0 font-mono tabular-nums">
+            <span className="hidden truncate sm:inline">{finished ? "Replay finished" : "Replaying a recorded run"}</span>
+            <span
+              className="ml-auto shrink-0 pl-2 font-mono tabular-nums"
+              title="Recorded pipeline time; the replay compresses long waits"
+            >
               {formatClock(recordedElapsed)} / {formatClock(recordedTotal)}
             </span>
           </div>

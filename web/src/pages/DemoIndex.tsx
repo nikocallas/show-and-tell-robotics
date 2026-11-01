@@ -3,25 +3,20 @@
 import { Link } from "react-router-dom";
 import { recentJobs } from "../api";
 import { FIXTURE_LABEL, IS_FIXTURE, LIVE_AVAILABLE } from "../config";
-import { loadDemoIndex, loadDemoReport } from "../demo";
+import { featuredRun, loadDemoBench, loadDemoRuns, type DemoRun } from "../demo";
 import { useAsync } from "../hooks";
+import { conditionRan } from "../lib/bench";
 import { formatDateTime, formatDuration, toEpochSeconds } from "../lib/format";
+import { isStandInVideo, runStory } from "../lib/provenance";
 import { useMode } from "../mode";
 import { normalizeStatus } from "../state";
-import type { DemoIndexEntry, JobReport } from "../types";
+import { PITCH, StepsStrip } from "../components/HowSteps";
 import { IconArrowRight, IconPlay } from "../components/icons";
 import { buttonClass, Card, Chip, EmptyState, PageLoading, StatusChip } from "../components/ui";
 import { VerifiedBadge } from "../components/VerifiedBadge";
 
-function RunCard({ entry }: { entry: DemoIndexEntry }) {
-  // Index entries may be minimal ({id}); fill the gaps from the run's report. export_demo's entries
-  // carry passed/total but not the first try or the wall time, so their report is read too.
-  const needsReport = !entry.rules || entry.final_total == null || !entry.status;
-  const report = useAsync<JobReport | null>(
-    () => (needsReport ? loadDemoReport(entry.id) : Promise.resolve(null)),
-    [entry.id, needsReport],
-  );
-  const r = report.data;
+function RunCard({ run }: { run: DemoRun }) {
+  const { entry, report: r } = run;
   const rules = entry.rules ?? r?.rules ?? "";
   const status = normalizeStatus(entry.status ?? r?.status, "failed");
   const passed = entry.final_passed ?? entry.passed ?? r?.final_passed;
@@ -32,6 +27,9 @@ function RunCard({ entry }: { entry: DemoIndexEntry }) {
   const wall = entry.wall_seconds ?? r?.wall_seconds;
   const taskId = entry.task_id ?? r?.task_id;
   const useVideo = entry.use_video ?? r?.use_video;
+  const standIn = Boolean(useVideo && isStandInVideo(r?.video));
+  const story = runStory(r);
+  const agreement = r?.agreement;
 
   return (
     <Link
@@ -44,6 +42,14 @@ function RunCard({ entry }: { entry: DemoIndexEntry }) {
         ) : (
           <StatusChip status={status} />
         )}
+        {useVideo != null &&
+          (standIn ? (
+            <Chip tone="warning" title="The demonstration is a stand-in clip, not a recording of a person">
+              Stand-in video
+            </Chip>
+          ) : (
+            <Chip tone="muted">{useVideo ? "Video + sentence" : "Sentence only"}</Chip>
+          ))}
         {IS_FIXTURE && <Chip tone="warning">{FIXTURE_LABEL}</Chip>}
         {taskId && <span className="font-mono text-[11px] text-zinc-400">{taskId}</span>}
       </div>
@@ -51,6 +57,8 @@ function RunCard({ entry }: { entry: DemoIndexEntry }) {
         {entry.title && !rules ? entry.title : rules ? `“${rules}”` : entry.id}
       </h2>
       {entry.title && rules && <p className="mt-1 text-sm text-zinc-500">{entry.title}</p>}
+      {entry.note && <p className="mt-1 text-xs text-zinc-500">{entry.note}</p>}
+      {story && <p className="mt-2 text-sm text-zinc-700">{story}</p>}
       <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-500">
         {firstTry && (
           <li>
@@ -70,7 +78,14 @@ function RunCard({ entry }: { entry: DemoIndexEntry }) {
             {attempts} attempt{attempts === 1 ? "" : "s"}
           </li>
         )}
-        {useVideo != null && <li>{useVideo ? "Video + sentence" : "Sentence only"}</li>}
+        {agreement && agreement.n > 0 && (
+          <li title="SAM 3.1 verdicts on the rendered clips vs simulator ground truth">
+            SAM agrees{" "}
+            <span className="font-medium tabular-nums text-zinc-800">
+              {agreement.agree}/{agreement.n}
+            </span>
+          </li>
+        )}
         {wall ? <li>{formatDuration(wall)}</li> : null}
         {created != null && <li>{formatDateTime(created)}</li>}
       </ul>
@@ -82,21 +97,72 @@ function RunCard({ entry }: { entry: DemoIndexEntry }) {
   );
 }
 
+/** Demo mode's landing: the pitch, the four steps, and the run that shows the whole loop. */
+function Hero({ featured }: { featured: DemoRun | null }) {
+  const attempts = featured?.report?.attempts ?? [];
+  const first = attempts[0];
+  const last = attempts[attempts.length - 1];
+  const repaired = attempts.length > 1 && first && last;
+  return (
+    <section>
+      <p className="text-xs font-medium text-accent-700">Show &amp; Tell Robotics · test-driven robot programming</p>
+      <h1 className="mt-2 max-w-3xl text-xl font-semibold leading-snug tracking-tight text-zinc-900 sm:text-2xl">
+        {PITCH}
+      </h1>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {featured && (
+          // A primary button that may wrap on phones (buttonClass never wraps).
+          <Link
+            to={`/replay/${encodeURIComponent(featured.entry.id)}`}
+            className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-accent-600 px-3.5 py-2 text-left text-sm font-medium text-white shadow-sm transition-colors hover:bg-accent-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2"
+          >
+            <IconPlay size={13} className="shrink-0" />
+            {repaired
+              ? `Watch it fail, diagnose and fix itself (${first.passed}/${first.total} → ${last.passed}/${last.total})`
+              : "Watch a recorded run"}
+          </Link>
+        )}
+        <Link to="/bench" className={buttonClass("secondary", "md")}>
+          Benchmark <IconArrowRight size={15} />
+        </Link>
+      </div>
+      <StepsStrip className="mt-6" />
+    </section>
+  );
+}
+
 export function DemoIndexPage() {
   const { mode } = useMode();
-  const index = useAsync(loadDemoIndex, []);
+  const runsData = useAsync(loadDemoRuns, []);
+  const bench = useAsync(() => loadDemoBench().catch(() => null), []);
   const recent = mode === "live" ? recentJobs() : [];
-  const runs = index.data ?? [];
+  const runs = runsData.data ?? [];
+  const demo = mode === "demo";
+  // bench/results.json says "missing_video" for every task until the human demos are recorded.
+  const benchRows = bench.data?.tasks ?? [];
+  const videoPending = benchRows.length > 0 && benchRows.every((row) => !conditionRan(row.video));
 
   return (
     <div className="space-y-8">
+      {demo && !runsData.loading && <Hero featured={featuredRun(runs)} />}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">Recorded runs</h1>
+          {demo ? (
+            <h2 className="text-base font-semibold tracking-tight text-zinc-900 sm:text-lg">Recorded runs</h2>
+          ) : (
+            <h1 className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">Recorded runs</h1>
+          )}
           <p className="mt-1.5 max-w-2xl text-sm text-zinc-600">
-            Complete runs of the pipeline, replayed in the browser with their real events: the spec, every
-            test scene, the failures, the diagnosis and the repair. No backend needed.
+            Complete runs of the pipeline, replayed in the browser from their recorded events: the spec,
+            every test scene and, when a scene failed, the diagnosis and the repair. No backend needed.
           </p>
+          {videoPending && (
+            <p className="mt-1.5 max-w-2xl text-xs text-zinc-500">
+              The human demo videos are not recorded yet, so the benchmark's video + sentence condition
+              has not run. Each run below says what it was made from.
+            </p>
+          )}
         </div>
         {LIVE_AVAILABLE && mode === "live" && (
           <Link to="/new" className={buttonClass("primary", "md")}>
@@ -105,7 +171,7 @@ export function DemoIndexPage() {
         )}
       </div>
 
-      {index.loading ? (
+      {runsData.loading ? (
         <PageLoading label="Loading recorded runs" />
       ) : runs.length === 0 ? (
         <EmptyState icon={<IconPlay size={18} />} title="No recorded runs yet">
@@ -115,8 +181,8 @@ export function DemoIndexPage() {
         </EmptyState>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {runs.map((e) => (
-            <RunCard key={e.id} entry={e} />
+          {runs.map((run) => (
+            <RunCard key={run.entry.id} run={run} />
           ))}
         </div>
       )}

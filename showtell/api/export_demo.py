@@ -2,10 +2,12 @@
 
 `python -m showtell export-demo --job <job id | job folder> [--out web/public/demo]` writes the
 bundle web/README.md documents ("Demo bundle"):
-    index.json                       [{id, rules, status, attempts, created_at, ...}], newest first
+    index.json                       [{id, rules, status, attempts, created_at, ..., title?,
+                                     note?}], newest first
     bench.json                       a copy of bench/results.json (when it exists)
     tasks.json                       the benchmark task presets (same shape as GET /api/tasks)
-    <job_id>/report.json             the JobReport with media paths -> "media/<job_id>/<rel path>"
+    <job_id>/report.json             the JobReport with media paths -> "media/<job_id>/<rel path>",
+                                     plus demo_note (how the run was made) when one was given
     <job_id>/events.json             events.jsonl as a JSON list (ts kept for realistic replay;
                                      media paths rewritten the same way)
     <job_id>/job.json                the GET /api/jobs/<id> shape, same media paths
@@ -14,7 +16,8 @@ bundle web/README.md documents ("Demo bundle"):
                                      judge_angle.mp4; the input and normalized videos, keyframes
                                      and repair frames
 Media paths are relative to the bundle root, so the web app (web/src/demo.ts demoMediaUrl) loads
-them from /demo/media/<job_id>/<rel path>.
+them from /demo/media/<job_id>/<rel path>. `--title` and `--note` label a run in the hosted demo
+(for example "Stand-in video: ..."); a later export of the same job keeps them unless replaced.
 """
 
 from __future__ import annotations
@@ -175,7 +178,13 @@ def _job_row(report: dict[str, Any], row: db.Job | None, job_id: str) -> db.Job:
 def _job_detail(report: dict[str, Any], row: db.Job | None, job_dir: Path, job_id: str) -> dict:
     """GET /api/jobs/<id> shape (relative media paths), built from the final report."""
     job = job_view(_job_row(report, row, job_id))
-    job.update(status=report.get("status") or job["status"], error=report.get("error"))
+    # The report's video path is relative to the job folder; the database row may hold an
+    # absolute local path, which must not end up in a public bundle.
+    job.update(
+        status=report.get("status") or job["status"],
+        error=report.get("error"),
+        video=report.get("video"),
+    )
     job["links"] = {
         "events": f"{job_id}/events.json",
         "report_md": f"{job_id}/report.md",
@@ -188,6 +197,20 @@ def _job_detail(report: dict[str, Any], row: db.Job | None, job_dir: Path, job_i
         "report": report,
         "media": folder_media(job_dir),
     }
+
+
+def _previous_labels(out: Path, job_id: str) -> tuple[str | None, str | None]:
+    """(title, note) of this job from an earlier export into the same bundle, if any."""
+    try:
+        index = json.loads((out / "index.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None, None
+    if isinstance(index, dict):
+        index = index.get("jobs")
+    for entry in index if isinstance(index, list) else []:
+        if isinstance(entry, dict) and entry.get("id") == job_id:
+            return entry.get("title"), entry.get("note")
+    return None, None
 
 
 def _index_entry(report: dict[str, Any], job_id: str) -> dict[str, Any]:
@@ -232,9 +255,12 @@ def export_demo(
     *,
     data_dir: Path | None = None,
     bench_results: Path | None = None,
+    title: str | None = None,
+    note: str | None = None,
     verbose: bool = True,
 ) -> ExportResult:
-    """Copy a finished job's report, events and media into the demo bundle at `out`."""
+    """Copy a finished job's report, events and media into the demo bundle at `out`. `title` and
+    `note` label the run in the hosted demo; None keeps the labels of an earlier export."""
     data_dir = Path(data_dir or settings.SHOWTELL_DATA_DIR)
     job_dir, row = _locate(job, data_dir)
     report = _load_report(job_dir, row)
@@ -245,7 +271,12 @@ def export_demo(
     bundle = _Bundle(job_dir, job_id)
     for rel in _default_media(job_dir):
         bundle.add(rel)
+    old_title, old_note = _previous_labels(Path(out), job_id)
+    title = old_title if title is None else title.strip() or None
+    note = old_note if note is None else note.strip() or None
     report_out = bundle.rewrite(report)
+    if note:
+        report_out["demo_note"] = note
     events_out = bundle.rewrite(
         [ev.model_dump(mode="json") for ev in read_events(job_dir / "events.jsonl")]
     )
@@ -256,10 +287,16 @@ def export_demo(
     _write_json(out / job_id / "events.json", events_out, pretty=False)
     _write_json(out / job_id / "job.json", detail_out, pretty=False)
     if (job_dir / "report.md").is_file():
-        shutil.copy2(job_dir / "report.md", out / job_id / "report.md")
+        md = (job_dir / "report.md").read_text(encoding="utf-8")
+        if note:  # the downloaded report says how the run was made, too
+            head, _, rest = md.partition("\n")
+            md = f"{head}\n\n> {note}\n{rest}"
+        (out / job_id / "report.md").write_text(md, encoding="utf-8")
     if report.get("final_program"):
         (out / job_id / "program.py").write_text(report["final_program"], encoding="utf-8")
-    _update_index(out / "index.json", _index_entry(report, job_id))
+    entry = _index_entry(report, job_id)
+    entry.update({k: v for k, v in (("title", title), ("note", note)) if v})
+    _update_index(out / "index.json", entry)
     bench = Path(bench_results or ROOT / "bench" / "results.json")
     if bench.is_file():
         shutil.copy2(bench, out / "bench.json")

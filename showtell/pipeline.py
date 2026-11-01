@@ -81,10 +81,11 @@ def _jsonable(x: Any) -> Any:
 
 
 class Stage:
-    """Context manager that emits stage_started / stage_done with timing."""
+    """Context manager that emits stage_started / stage_done with timing. With `usage_tag`, the
+    stage_done event also says whether every model call under that tag came from the local cache."""
 
-    def __init__(self, emit: Emitter, name: str, **extra: Any) -> None:
-        self.emit, self.name, self.extra = emit, name, extra
+    def __init__(self, emit: Emitter, name: str, *, usage_tag: str | None = None, **extra: Any):
+        self.emit, self.name, self.usage_tag, self.extra = emit, name, usage_tag, extra
 
     def __enter__(self) -> Stage:
         self.t0 = time.time()
@@ -93,9 +94,15 @@ class Stage:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         if exc is None:
-            self.emit(
-                "stage_done", stage=self.name, seconds=round(time.time() - self.t0, 2), **self.extra
-            )
+            extra = dict(self.extra)
+            if self.usage_tag:
+                from showtell.meta.usage import tag_cached
+
+                cached = tag_cached(self.usage_tag, since=self.t0)
+                if cached is not None:
+                    extra["cached"] = cached
+            seconds = round(time.time() - self.t0, 2)
+            self.emit("stage_done", stage=self.name, seconds=seconds, **extra)
 
 
 # ------------------------------------------------------------------------------------- helpers
@@ -132,6 +139,7 @@ def _cost(job_id: str) -> CostSummary:
         wonder_usd=round(by["wonder"].uncached_usd, 4) if "wonder" in by else 0.0,
         sam_usd=round(by["sam"].uncached_usd, 4) if "sam" in by else 0.0,
         calls=s.total.n_calls,
+        paid_usd=round(s.total.usd, 4),
     )
 
 
@@ -167,7 +175,7 @@ def _perceive(config: JobConfig, root: Path, emit: Emitter, tag: str):
         normalized = video_prep.normalize(Path(config.video_path), prep / "normalized.mp4")
         keyframes = video_prep.keyframes(normalized, n=8, width=768, out_dir=prep / "keyframes")
         info = video_prep.probe(normalized)
-    with Stage(emit, "discover"):
+    with Stage(emit, "discover", usage_tag=f"{tag}discover"):
         discovery = ts.discover(keyframes, tag=f"{tag}discover")
         (root / "discovery.json").write_text(discovery.model_dump_json(indent=2))
     with Stage(emit, "track"):
@@ -391,7 +399,7 @@ def run_job(
             raise ValueError("no sim objects: give a demo video, a task preset or explicit objects")
         report.object_ids = object_ids
 
-        with Stage(emit, "spec"):
+        with Stage(emit, "spec", usage_tag=None if config.spec is not None else f"{tag}spec"):
             if config.spec is not None:
                 spec, media_path = config.spec, "none"
             else:
@@ -423,9 +431,11 @@ def run_job(
             edited = False
         report.spec = spec
         (root / "spec_approved.json").write_text(spec.model_dump_json(indent=2))
-        emit("spec_approved", spec=spec, edited=edited)
+        auto = not (config.interactive and approve is not None)  # approved without review
+        emit("spec_approved", spec=spec, edited=edited, auto=auto)
 
-        with Stage(emit, "program"):
+        program_tag = None if config.program_source is not None else f"{tag}program"
+        with Stage(emit, "program", usage_tag=program_tag):
             if config.program_source is not None:
                 from showtell.agent.sandbox import strip_fences, validate_program
                 from showtell.agent.schemas import Program
@@ -470,7 +480,7 @@ def run_job(
                 break
             emit("repair_started", attempt=n + 1)
             try:
-                with Stage(emit, "repair", attempt=n + 1):
+                with Stage(emit, "repair", usage_tag=f"{tag}repair{n + 1}", attempt=n + 1):
                     first_fail = next(r for r in results if not r.passed)
                     seed_dir = root / "attempts" / str(n) / f"seed_{first_fail.seed}"
                     frames = repair_mod.failure_frames(

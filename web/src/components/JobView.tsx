@@ -2,35 +2,54 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import type { MediaResolver } from "../hooks";
+import { useTaskContext, type MediaResolver } from "../hooks";
+import { conditionRan, sameProgram, sameSpec } from "../lib/bench";
 import {
+  binLabel,
+  binWithColor,
+  describeSelector,
   formatDateTime,
   formatDuration,
   formatPct,
   formatUsd,
   kindLabel,
   objectLabel,
+  passParts,
   shortId,
 } from "../lib/format";
+import { fileName, isStandInVideo } from "../lib/provenance";
 import {
   activityText,
   attemptAgreement,
   attemptCounts,
+  cachedStages,
   isTerminal,
   isVerified,
   lastAttempt,
   pct,
   type JobState,
+  type StageKey,
 } from "../state";
-import type { AgreementStats, TaskSpec } from "../types";
+import type { AgreementStats, BenchCondition, BenchRow, Rule, TaskPreset, TaskSpec } from "../types";
 import { AttemptTimeline } from "./AttemptTimeline";
-import { IconChevronLeft, IconClock, IconDownload, IconHand, Spinner } from "./icons";
+import { IconArrowRight, IconChevronLeft, IconClock, IconDownload, IconHand, Spinner } from "./icons";
 import { ProgramPanel } from "./ProgramPanel";
 import { SeedGrid } from "./SeedGrid";
 import { SeedModal } from "./SeedModal";
 import { SpecCard } from "./SpecCard";
 import { StageStrip } from "./StageStrip";
-import { Button, buttonClass, Card, CardHeader, Chip, cx, Stat, StatusChip } from "./ui";
+import {
+  AspectVideo,
+  Banner,
+  Button,
+  buttonClass,
+  Card,
+  CardHeader,
+  Chip,
+  cx,
+  Stat,
+  StatusChip,
+} from "./ui";
 import { VerifiedBadge } from "./VerifiedBadge";
 
 export interface DownloadLink {
@@ -69,73 +88,273 @@ function mergeAgreement(list: (AgreementStats | null)[]): AgreementStats | null 
   return any ? out : null;
 }
 
+// ------------------------------------------------------------------ benchmark reference
+interface Reference {
+  condition: "sentence-only" | "video + sentence";
+  run: BenchCondition;
+  passed: number;
+  total: number;
+}
+
+/**
+ * The benchmark's score for this job's spec and program: the task's benchmark run in the same
+ * condition, when it has exactly this spec and final program (so its reference score applies).
+ */
+function benchReference(run: JobState, row: BenchRow | null): Reference | null {
+  const cond = run.useVideo ? row?.video : row?.sentence;
+  if (!row || !conditionRan(cond)) return null;
+  const score = passParts(cond.ref_final);
+  if (!score) return null;
+  const program = run.report?.final_program || lastAttempt(run)?.program;
+  if (!sameSpec(run.spec, cond.spec) || !sameProgram(program, cond.final_program)) return null;
+  return {
+    condition: run.useVideo ? "video + sentence" : "sentence-only",
+    run: cond,
+    passed: score.passed,
+    total: score.total,
+  };
+}
+
+function ruleShort(rule: Rule): string {
+  const what = describeSelector(rule.select);
+  return rule.place_in && !rule.leave ? `${what} → ${binWithColor(rule.place_in)}` : `${what} stay put`;
+}
+
+const REFERENCE_ID = "benchmark-reference";
+
+function ReferenceBox({
+  reference,
+  spec,
+  preset,
+  taskId,
+}: {
+  reference: Reference;
+  spec: TaskSpec | null;
+  preset: TaskPreset | null;
+  taskId: string | null;
+}) {
+  const full = reference.passed === reference.total;
+  return (
+    <div id={REFERENCE_ID} className="scroll-mt-24 rounded-lg border border-zinc-200 bg-zinc-50/70 p-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-medium text-zinc-900">Against the benchmark reference</h3>
+        <span className={cx("text-sm font-semibold tabular-nums", full ? "text-emerald-700" : "text-rose-700")}>
+          {reference.passed}/{reference.total}
+        </span>
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+        The benchmark's {reference.condition} run of {taskId ?? "this task"}
+        {reference.run.job_id ? (
+          <>
+            {" "}
+            (<span className="break-all font-mono text-[11px]">{reference.run.job_id}</span>)
+          </>
+        ) : null}{" "}
+        has this spec and final program. Scored against the reference checks, which encode the human
+        demo, it passes {reference.passed} of {reference.total} scenes.
+      </p>
+      <dl className="mt-2.5 space-y-2 text-xs">
+        {spec && spec.rules.length > 0 && (
+          <div>
+            <dt className="font-medium text-zinc-500">This spec</dt>
+            <dd className="mt-0.5 text-zinc-800">{spec.rules.map(ruleShort).join(" · ")}</dd>
+          </div>
+        )}
+        {preset?.demo && (
+          <div>
+            <dt className="font-medium text-zinc-500">What the human demo shows (the reference)</dt>
+            <dd className="mt-0.5 text-zinc-800">{preset.demo}</dd>
+          </div>
+        )}
+      </dl>
+      <Link
+        to="/bench"
+        className="mt-2.5 inline-flex items-center gap-1 text-xs font-medium text-accent-700 hover:text-accent-800"
+      >
+        Benchmark <IconArrowRight size={12} />
+      </Link>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ how a recording was made
+const CACHED_NOUN: Partial<Record<StageKey, string>> = {
+  discover: "the object discovery",
+  spec: "the spec",
+  program: "the program",
+  repair: "the repair",
+};
+
+function joinAnd(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/** Facts about how a recorded run was made, all read from the recording itself. */
+function recordingFacts(run: JobState, preset: TaskPreset | null): ReactNode[] {
+  const facts: ReactNode[] = [];
+  if (run.report?.demo_note) facts.push(run.report.demo_note);
+  const noHumanVideo =
+    preset && preset.has_video === false ? ` No human demo video is recorded for ${preset.id} yet.` : "";
+  if (!run.useVideo) {
+    facts.push(`Sentence only: the spec was written without a demonstration video.${noHumanVideo}`);
+  } else if (isStandInVideo(run.videoPath)) {
+    facts.push(
+      <>
+        Stand-in video: <span className="break-all font-mono text-xs">{fileName(run.videoPath)}</span> is
+        not a recording of a person.{noHumanVideo}
+      </>,
+    );
+  }
+  if (run.specApproved && run.specAutoApproved && !run.specEdited) {
+    facts.push("Auto-approved spec: nobody reviewed it before the program was written.");
+  }
+  const cached = cachedStages(run)
+    .map((k) => CACHED_NOUN[k])
+    .filter((n): n is string => Boolean(n));
+  if (cached.length) {
+    const simulated = run.stages.verify.status === "done" && run.stages.verify.seconds > 0;
+    const judged = run.stages.judge.status === "done" && run.stages.judge.seconds > 0;
+    const one = cached.length === 1;
+    facts.push(
+      `Muse Wonder's answer${one ? "" : "s"} for ${joinAnd(cached)} came from the local response cache: ${one ? "an identical request had" : "identical requests had"} been answered before, so ${one ? "that stage takes" : "those stages take"} no time here.` +
+        (simulated
+          ? ` The simulator ran every test scene in this run${judged ? " and SAM 3.1 judged the rendered clips" : ""}.`
+          : ""),
+    );
+  }
+  return facts;
+}
+
 // ------------------------------------------------------------------ side cards
-function DemonstrationCard({ state, media }: { state: JobState; media: MediaResolver }) {
+const THIRD: Record<string, string> = { left_bin: "left", middle_bin: "middle", right_bin: "right" };
+
+function DemonstrationCard({
+  state,
+  media,
+  reference,
+  preset,
+}: {
+  state: JobState;
+  media: MediaResolver;
+  reference: Reference | null;
+  preset: TaskPreset | null;
+}) {
   const url = media(state.videoPath);
   const [failed, setFailed] = useState(false);
+  const standIn = state.useVideo && isStandInVideo(state.videoPath);
+  const notes = state.trackSummary?.notes ?? [];
+  // track_summary.py: when it finds fewer than 3 bowls, bins are named by thirds of the frame.
+  const thirdsNote = notes.find((n) => /frame thirds/i.test(n));
+  const bowlsFound = thirdsNote?.match(/found (\d+) bowl/i);
   const objects = [...(state.trackSummary?.objects ?? [])].sort((a, b) => {
     const ao = a.move_order ?? Number.POSITIVE_INFINITY;
     const bo = b.move_order ?? Number.POSITIVE_INFINITY;
     return ao - bo || a.concept.localeCompare(b.concept);
   });
   const tracking = ["running", "waiting"].includes(state.stages.track.status) || state.stages.prep.status === "running" || state.stages.discover.status === "running";
+  const referenceBox =
+    reference && state.spec ? (
+      <ReferenceBox reference={reference} spec={state.spec} preset={preset} taskId={state.taskId} />
+    ) : null;
 
   return (
     <Card>
       <CardHeader
         title="Demonstration"
         icon={<IconHand size={16} />}
-        subtitle={state.useVideo ? "What SAM 3.1 tracked in the human demo" : "Sentence only: no video was used"}
+        subtitle={state.useVideo ? "What SAM 3.1 tracked in the demonstration video" : "Sentence only: no video was used"}
+        actions={
+          standIn ? (
+            <Chip tone="warning" title="A stand-in clip, not a recording of a person">
+              Stand-in video
+            </Chip>
+          ) : undefined
+        }
       />
       <div className="space-y-4 px-4 py-4 sm:px-5">
         {state.useVideo && url && !failed && (
-          <video
+          <AspectVideo
             src={url}
             controls
             muted
             playsInline
             preload="metadata"
+            fallbackAspect={16 / 9}
             onError={() => setFailed(true)}
-            className="aspect-video w-full rounded-lg bg-zinc-900 object-contain"
+            className="w-full rounded-lg bg-zinc-900 object-contain"
           />
         )}
+        {standIn && (
+          <p className="-mt-1 text-xs text-amber-800">
+            Stand-in clip, not a human demonstration:{" "}
+            <span className="break-all font-mono text-[11px]">{fileName(state.videoPath)}</span>
+          </p>
+        )}
         {!state.useVideo ? (
-          <p className="text-sm text-zinc-600">
-            Muse Wonder wrote the spec from the rule sentence and the list of objects in the scene.
-            This is the ablation the benchmark compares against.
+          <p className="text-sm leading-relaxed text-zinc-600">
+            Muse Wonder wrote the spec from the rule sentence and the list of objects in the scene,
+            with no video: the benchmark's sentence-only ablation. Pass and fail on this page use this
+            spec's own checks. The Benchmark page scores the same kind of run against reference checks
+            that encode the human demo, where a spec written without the video can score lower.
           </p>
         ) : objects.length ? (
-          <ol className="space-y-1.5">
-            {objects.map((o) => (
-              <li key={o.track_id} className="flex items-center gap-2.5 text-sm">
-                <span
-                  className={cx(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold",
-                    o.moved ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-400",
-                  )}
-                >
-                  {o.move_order != null ? o.move_order + 1 : "–"}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-zinc-800">{o.concept}</span>
-                <span className="shrink-0 text-xs text-zinc-500">
-                  {o.moved ? (o.end_bin ? `to ${o.end_bin.replace("_", " ")}` : "moved") : "not moved"}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <div>
+            <ol className="space-y-1.5">
+              {objects.map((o) => (
+                <li key={o.track_id} className="flex items-center gap-2.5 text-sm">
+                  <span
+                    className={cx(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold",
+                      o.moved ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-400",
+                    )}
+                  >
+                    {o.move_order != null ? o.move_order + 1 : "–"}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-zinc-800" title={o.track_id}>
+                    {o.attrs?.size ? `${o.attrs.size} ${o.concept}` : o.concept}
+                  </span>
+                  <span className="shrink-0 text-xs text-zinc-500">
+                    {!o.moved
+                      ? "not moved"
+                      : !o.end_bin
+                        ? "moved"
+                        : thirdsNote
+                          ? `ends in the ${THIRD[o.end_bin] ?? binLabel(o.end_bin)} third`
+                          : `to ${binLabel(o.end_bin)}`}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            {thirdsNote && (
+              <p className="mt-2.5 text-xs text-zinc-500">
+                {bowlsFound && Number(bowlsFound[1]) > 0
+                  ? `Only ${bowlsFound[1]} of the 3 bowls ${Number(bowlsFound[1]) === 1 ? "was" : "were"} found in the video`
+                  : "No bowls were found in the video"}
+                , so end positions are thirds of the frame (left, middle, right), not bowls.
+              </p>
+            )}
+          </div>
         ) : (
           <p className="flex items-center gap-2 text-sm text-zinc-500">
             {tracking && <Spinner size={14} />}
             {tracking ? "Tracking the hand and objects" : "No track summary for this job."}
           </p>
         )}
-        {state.trackSummary?.notes?.length ? (
-          <ul className="space-y-1 text-xs text-zinc-500">
-            {state.trackSummary.notes.map((n, i) => (
-              <li key={i}>{n}</li>
-            ))}
-          </ul>
-        ) : null}
+        {referenceBox}
+        {notes.length > 0 && (
+          <details className="group">
+            <summary className="cursor-pointer list-none text-xs font-medium text-zinc-500 hover:text-zinc-800">
+              <span className="inline-block transition-transform group-open:rotate-90">›</span> Perception
+              notes ({notes.length})
+            </summary>
+            <ul className="mt-2 space-y-1 rounded-lg bg-zinc-50 p-2.5 text-[11px] leading-relaxed text-zinc-600">
+              {notes.map((n, i) => (
+                <li key={i}>{n}</li>
+              ))}
+            </ul>
+          </details>
+        )}
       </div>
     </Card>
   );
@@ -161,9 +380,13 @@ function DetailsCard({ state }: { state: JobState }) {
           />
           <Stat label="Wall time" value={formatDuration(wall)} />
           <Stat
-            label="API cost (list price)"
+            label="API cost at list price"
             value={cost ? formatUsd(cost.usd) : "—"}
-            hint={cost ? `Wonder ${formatUsd(cost.wonder_usd)} · SAM ${formatUsd(cost.sam_usd)} · ${cost.calls} calls; reruns hit the local cache` : undefined}
+            hint={
+              cost
+                ? `Wonder ${formatUsd(cost.wonder_usd)} · SAM ${formatUsd(cost.sam_usd)} · ${cost.calls} calls, counted at list price even when served from the local cache${cost.paid_usd != null ? ` · billed ${formatUsd(cost.paid_usd)}` : ""}`
+                : undefined
+            }
           />
           <Stat
             label="Judge agreement"
@@ -186,7 +409,7 @@ function DetailsCard({ state }: { state: JobState }) {
                       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100">
                         <span className="block h-full rounded-full bg-zinc-700" style={{ width: `${p}%` }} />
                       </span>
-                      <span className="w-20 shrink-0 text-right tabular-nums text-zinc-500">
+                      <span className="shrink-0 whitespace-nowrap text-right tabular-nums text-zinc-500">
                         {formatPct(p)} ({v.agree}/{v.n})
                       </span>
                     </li>
@@ -231,6 +454,7 @@ function DetailsCard({ state }: { state: JobState }) {
 // ------------------------------------------------------------------ the view
 export function JobView({
   state,
+  recording,
   media,
   source,
   downloads,
@@ -238,8 +462,11 @@ export function JobView({
   banner,
   back,
   noVideoNote,
+  onModalChange,
 }: {
   state: JobState;
+  /** Replays: the whole recording, so facts about the run show from the start of the replay. */
+  recording?: JobState | null;
   media: MediaResolver;
   source: "live" | "replay";
   downloads: DownloadLink[];
@@ -247,10 +474,18 @@ export function JobView({
   banner?: ReactNode;
   back: { label: string; to: string };
   noVideoNote?: string;
+  /** A scene dialog opened (true) or closed (false); replays pause while one is open. */
+  onModalChange?: (open: boolean) => void;
 }) {
   const last = lastAttempt(state);
   const [picked, setPicked] = useState<number | null>(null);
-  const [modalSeed, setModalSeed] = useState<number | null>(null);
+  // The dialog stays on the attempt it was opened from, whatever the replay or live run adds.
+  const [modal, setModal] = useState<{ attempt: number; seed: number } | null>(null);
+  const replay = source === "replay";
+  const whole = recording ?? state;
+  const context = useTaskContext(source, whole.taskId);
+  const reference = useMemo(() => benchReference(whole, context.bench), [whole, context.bench]);
+  const facts = useMemo(() => (replay ? recordingFacts(whole, context.preset) : []), [replay, whole, context.preset]);
 
   // A new attempt takes focus (the replay story: fail -> diagnose -> rerun).
   const count = state.attempts.length;
@@ -260,10 +495,29 @@ export function JobView({
     prevCount.current = count;
   }, [count]);
 
+  const modalOpen = modal != null;
+  const onModalChangeRef = useRef(onModalChange);
+  onModalChangeRef.current = onModalChange;
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    onModalChangeRef.current?.(modalOpen);
+  }, [modalOpen]);
+
   const selected = useMemo(
     () => state.attempts.find((a) => a.n === picked) ?? last,
     [state.attempts, picked, last],
   );
+  const modalAttempt = modal ? state.attempts.find((a) => a.n === modal.attempt) : undefined;
+  const modalResult = modal && modalAttempt ? modalAttempt.results[modal.seed] : undefined;
+  // A restarted replay can drop the attempt the dialog shows: close it then.
+  useEffect(() => {
+    if (modal && !modalResult) setModal(null);
+  }, [modal, modalResult]);
+
   const verified = isVerified(state);
   const terminal = isTerminal(state.status);
   const now = useNow(source === "live" && !terminal && state.startedAt != null);
@@ -290,7 +544,7 @@ export function JobView({
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-zinc-500">
             <StatusChip status={state.status} />
             {(state.status === "running" || state.status === "awaiting_approval") && (
-              <span className="text-zinc-700">{activityText(state)}</span>
+              <span className="text-zinc-700">{activityText(state, replay)}</span>
             )}
             <span className="hidden h-3 w-px bg-zinc-200 sm:block" />
             {state.taskId && <span className="font-mono text-[11px]">{state.taskId}</span>}
@@ -308,7 +562,31 @@ export function JobView({
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
-          {verified && finalCounts && <VerifiedBadge passed={finalCounts.passed} total={finalCounts.total} />}
+          {verified && finalCounts && (
+            <div className="flex flex-col items-start gap-1.5 lg:items-end">
+              <VerifiedBadge passed={finalCounts.passed} total={finalCounts.total} />
+              <span className="text-xs text-zinc-500">
+                Every scene passes this spec's checks
+                {reference && reference.passed < reference.total && (
+                  <>
+                    {" · "}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        document.getElementById(REFERENCE_ID)?.scrollIntoView({ behavior: "smooth", block: "center" })
+                      }
+                      className="font-medium text-zinc-700 underline decoration-zinc-300 underline-offset-2 hover:text-zinc-900"
+                    >
+                      benchmark reference{" "}
+                      <span className="tabular-nums text-rose-700">
+                        {reference.passed}/{reference.total}
+                      </span>
+                    </button>
+                  </>
+                )}
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {downloads.map((d) =>
               d.href && !d.disabled ? (
@@ -333,6 +611,16 @@ export function JobView({
 
       {banner}
 
+      {facts.length > 0 && (
+        <Banner tone="neutral" title="About this recording">
+          <ul className="mt-1 list-disc space-y-1 pl-4 text-xs leading-relaxed text-zinc-600 sm:text-[13px]">
+            {facts.map((f, i) => (
+              <li key={i}>{f}</li>
+            ))}
+          </ul>
+        </Banner>
+      )}
+
       <Card className="px-4 py-3 sm:px-5">
         <StageStrip state={state} />
       </Card>
@@ -353,7 +641,9 @@ export function JobView({
             clarifyingQuestion={state.clarifyingQuestion}
             awaiting={state.awaitingApproval}
             approved={state.specApproved}
+            autoApproved={state.specAutoApproved}
             edited={state.specEdited}
+            replay={replay}
             onApprove={onApprove}
             pendingText={
               state.status === "queued"
@@ -365,34 +655,34 @@ export function JobView({
             readOnlyNote="Recorded run: the spec was approved at this point."
           />
           <div className="lg:hidden">
-            <AttemptTimeline state={state} selected={selected?.n ?? null} onSelect={setPicked} />
+            <AttemptTimeline state={state} selected={selected?.n ?? null} onSelect={setPicked} media={media} />
           </div>
           <SeedGrid
             state={state}
             attempt={selected}
             onSelectAttempt={setPicked}
-            onOpen={setModalSeed}
+            onOpen={(seed) => selected && setModal({ attempt: selected.n, seed })}
             media={media}
           />
           <ProgramPanel attempts={state.attempts} selected={selected} onSelect={setPicked} />
         </div>
         <div className="min-w-0 space-y-6 lg:col-span-4">
           <div className="hidden lg:block">
-            <AttemptTimeline state={state} selected={selected?.n ?? null} onSelect={setPicked} />
+            <AttemptTimeline state={state} selected={selected?.n ?? null} onSelect={setPicked} media={media} />
           </div>
-          <DemonstrationCard state={state} media={media} />
+          <DemonstrationCard state={state} media={media} reference={reference} preset={context.preset} />
           <DetailsCard state={state} />
         </div>
       </div>
 
-      {modalSeed != null && selected && selected.results[modalSeed] && (
+      {modal && modalAttempt && modalResult && (
         <SeedModal
-          attempt={selected}
-          seed={modalSeed}
+          attempt={modalAttempt}
+          seed={modal.seed}
           spec={state.spec}
           media={media}
-          onClose={() => setModalSeed(null)}
-          onNavigate={setModalSeed}
+          onClose={() => setModal(null)}
+          onNavigate={(seed) => setModal({ attempt: modal.attempt, seed })}
           noVideoNote={noVideoNote}
         />
       )}

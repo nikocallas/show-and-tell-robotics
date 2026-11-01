@@ -44,8 +44,13 @@ Then the API smoke test (tracks the hand in `smoke.mp4`, about $0.02):
 .venv/bin/python -m showtell smoke
 ```
 
-and the full pipeline on one task:
+Then run the benchmark's video condition. It is resumable and runs only what is missing, so the
+sentence-only results already in `bench/results.json` are kept; each task's first video run is the
+one the benchmark reports (about $1.50 per task with the SAM judge):
 
 ```bash
-.venv/bin/python -m showtell run --video bench/videos/task03_size_glass.mp4 --rules "Sort by size, and don't touch the glass."
+.venv/bin/python -m showtell bench
 ```
+
+Single runs (`python -m showtell run --video ...`) are for trying things afterwards; with the local
+response cache an unchanged request replays its earlier answer instead of drawing a new sample.

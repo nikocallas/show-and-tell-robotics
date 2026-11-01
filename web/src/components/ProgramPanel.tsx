@@ -147,19 +147,22 @@ export function ProgramPanel({
                   ]}
                 />
               )}
-              <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy program">
-                {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() =>
-                  saveText(`program_attempt${selected.n}.py`, selected.program ?? "", "text/x-python")
-                }
-                aria-label="Download this attempt's program"
-              >
-                <IconDownload size={14} />
-              </Button>
+              <span className="flex items-center">
+                <Button size="sm" variant="ghost" onClick={copy} aria-label="Copy program" title="Copy">
+                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    saveText(`program_attempt${selected.n}.py`, selected.program ?? "", "text/x-python")
+                  }
+                  aria-label="Download this attempt's program"
+                  title="Download"
+                >
+                  <IconDownload size={14} />
+                </Button>
+              </span>
             </>
           ) : undefined
         }

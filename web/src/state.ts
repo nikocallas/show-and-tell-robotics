@@ -51,7 +51,23 @@ export interface StageState {
   seconds: number; // accumulated over repeated runs (verify/judge/repair run once per attempt)
   attempt: number | null;
   startedAt: number | null;
+  /** Finished runs of the stage itself (the folded "approval"/"summary" stages not counted). */
+  runs: number;
+  /** Runs that finished in under CACHE_MAX_S: for a Muse Wonder stage, a local cache hit. */
+  fastRuns: number;
+  /** stage_done's `cached` flag, when the pipeline sends one. */
+  cachedFlag: boolean | null;
 }
+
+/** Stages whose work is one Muse Wonder call. */
+const WONDER_STAGES: readonly StageKey[] = ["discover", "spec", "program", "repair"];
+/**
+ * A live Muse Wonder call takes seconds; one served from the pipeline's local response cache
+ * (meta/wonder.call_json) returns in milliseconds. Below this, a Wonder stage was a cache hit.
+ */
+const CACHE_MAX_S = 0.5;
+/** pipeline.py: the notes of a program the job supplied (no Wonder call). */
+const SUPPLIED_PROGRAM_NOTES = "program supplied by the user";
 
 // ------------------------------------------------------------------ attempts
 export type AttemptStatus = "writing" | "ready" | "running" | "done";
@@ -102,9 +118,15 @@ export interface JobState {
   mediaPath: string | null;
   clarifyingQuestion: string | null;
   awaitingApproval: boolean;
+  /** The pipeline paused for a person to approve the spec (an awaiting_approval event arrived). */
+  sawAwaitingApproval: boolean;
   specApproved: boolean;
+  /** Approved without review: the run never paused for approval (CLI and benchmark runs). */
+  specAutoApproved: boolean;
   specEdited: boolean;
   attempts: AttemptState[];
+  /** Attempt n -> the frames of its first failing scene that were sent to repair n + 1. */
+  failureFrames: Record<number, string[]>;
   report: JobReport | null;
   error: string | null;
   logs: LogLine[];
@@ -129,7 +151,17 @@ const DEFAULT_SEEDS = 20;
 
 function freshStages(): Record<StageKey, StageState> {
   const out = {} as Record<StageKey, StageState>;
-  for (const k of STAGES) out[k] = { status: "pending", seconds: 0, attempt: null, startedAt: null };
+  for (const k of STAGES) {
+    out[k] = {
+      status: "pending",
+      seconds: 0,
+      attempt: null,
+      startedAt: null,
+      runs: 0,
+      fastRuns: 0,
+      cachedFlag: null,
+    };
+  }
   return out;
 }
 
@@ -156,9 +188,12 @@ export function initialJobState(jobId: string, meta: JobMeta = {}): JobState {
     mediaPath: null,
     clarifyingQuestion: null,
     awaitingApproval: false,
+    sawAwaitingApproval: false,
     specApproved: false,
+    specAutoApproved: false,
     specEdited: false,
     attempts: [],
+    failureFrames: {},
     report: null,
     error: null,
     logs: [],
@@ -386,10 +421,16 @@ export function applyEvent(state: JobState, ev: PipelineEvent): JobState {
       const key = stageKey(d.stage);
       if (!key) break;
       const prev = s.stages[key];
+      const seconds = num(d.seconds) ?? 0;
+      // "approval" and "summary" fold into spec and track: their time counts, not their runs.
+      const own = d.stage === key;
       s = setStage(s, key, {
         status: "done",
-        seconds: prev.seconds + (num(d.seconds) ?? 0),
+        seconds: prev.seconds + seconds,
         attempt: num(d.attempt) ?? prev.attempt,
+        runs: prev.runs + (own ? 1 : 0),
+        fastRuns: prev.fastRuns + (own && num(d.seconds) != null && seconds < CACHE_MAX_S ? 1 : 0),
+        cachedFlag: own ? (bool(d.cached) ?? prev.cachedFlag) : prev.cachedFlag,
       });
       break;
     }
@@ -413,6 +454,7 @@ export function applyEvent(state: JobState, ev: PipelineEvent): JobState {
       s.clarifyingQuestion =
         str(d.clarifying_question) ?? s.spec?.clarifying_question ?? s.clarifyingQuestion;
       s.awaitingApproval = true;
+      s.sawAwaitingApproval = true;
       if (!isTerminal(s.status)) s.status = "awaiting_approval";
       s = setStage(s, "spec", { status: "waiting" });
       s.activeStage = "spec";
@@ -423,6 +465,9 @@ export function applyEvent(state: JobState, ev: PipelineEvent): JobState {
       if (spec) s.spec = spec;
       s.specApproved = true;
       s.specEdited = bool(d.edited) ?? false;
+      // pipeline.py approves without asking unless the run is interactive; then it first emits
+      // awaiting_approval. An explicit `auto` flag wins when the pipeline sends one.
+      s.specAutoApproved = bool(d.auto) ?? !s.sawAwaitingApproval;
       s.awaitingApproval = false;
       if (s.status === "awaiting_approval" || s.status === "queued") s.status = "running";
       if (s.stages.spec.status === "waiting") s = setStage(s, "spec", { status: "done" });
@@ -626,12 +671,28 @@ export function stateFromSnapshot(resp: ApiJobResponse): JobState {
   s.spec = j.spec ?? s.spec;
   s.clarifyingQuestion = s.spec?.clarifying_question ?? null;
   s.specApproved = Boolean(j.approved) || s.attempts.length > 0;
+  s.specAutoApproved = s.specApproved && j.auto_approve === true;
+  s.failureFrames = failureFramesFromApi(resp.attempts);
   s.awaitingApproval = status === "awaiting_approval";
   s.error = j.error ?? s.error;
   s.status = status;
   s.stages = deriveStages(s);
   if (isTerminal(status)) s.stages = finalizeStages(s.stages, status === "error");
   return s;
+}
+
+/** attempts[].failure_frames of GET /api/jobs/{id} (or a demo bundle's job.json), by attempt. */
+export function failureFramesFromApi(
+  attempts: Pick<ApiAttempt, "n" | "failure_frames">[] | null | undefined,
+): Record<number, string[]> {
+  const out: Record<number, string[]> = {};
+  for (const a of attempts ?? []) {
+    const frames = Array.isArray(a?.failure_frames)
+      ? a.failure_frames.filter((f): f is string => typeof f === "string" && f !== "")
+      : [];
+    if (typeof a?.n === "number" && frames.length) out[a.n] = frames;
+  }
+  return out;
 }
 
 /** Rough stage statuses from data alone (no stage events available). */
@@ -739,10 +800,35 @@ export function pct(stats: { agree: number; n: number } | null | undefined): num
   return stats && stats.n > 0 ? (100 * stats.agree) / stats.n : null;
 }
 
-/** One line describing what the pipeline is doing right now. */
-export function activityText(s: JobState): string {
+/**
+ * A Muse Wonder stage whose answer came from the pipeline's local response cache (the same request
+ * had been answered before), so it took no time and made no API call. The pipeline's `cached`
+ * flag decides when present; otherwise a Wonder stage that finished in under CACHE_MAX_S on every
+ * run was a cache hit. A spec or program the job supplied involves no Wonder call at all.
+ */
+export function stageCached(s: JobState, key: StageKey): boolean {
+  const st = s.stages[key];
+  if (st.status !== "done" || st.runs === 0) return false;
+  if (st.cachedFlag != null) return st.cachedFlag;
+  if (!WONDER_STAGES.includes(key)) return false;
+  if (key === "spec" && s.specSource === "given") return false;
+  if (key === "program" && s.attempts.find((a) => a.n === 0)?.notes === SUPPLIED_PROGRAM_NOTES) {
+    return false;
+  }
+  return st.fastRuns === st.runs;
+}
+
+/** The Wonder stages of this job that were served from the local cache, in pipeline order. */
+export function cachedStages(s: JobState): StageKey[] {
+  return STAGES.filter((k) => stageCached(s, k));
+}
+
+/** One line describing what the pipeline is doing right now (`replay`: a recorded run). */
+export function activityText(s: JobState, replay = false): string {
   if (s.status === "queued") return "Queued";
-  if (s.status === "awaiting_approval") return "Waiting for you to approve the task spec";
+  if (s.status === "awaiting_approval") {
+    return replay ? "Waiting for the user's approval (recorded)" : "Waiting for you to approve the task spec";
+  }
   if (s.status === "verified") return "Verified on every test scene";
   if (s.status === "failed") return "Not verified: some scenes still fail";
   if (s.status === "error") return "Stopped with an error";

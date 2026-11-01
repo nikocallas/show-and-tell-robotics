@@ -141,11 +141,17 @@ export interface AttemptReport {
   wall_seconds?: number;
 }
 
+/**
+ * pipeline._cost: `usd`, `wonder_usd` and `sam_usd` are list prices that count calls served from
+ * the local response cache as if they were made (usage.uncached_usd). `paid_usd`, when a report
+ * carries it, is what was actually billed.
+ */
 export interface CostSummary {
   usd: number;
   wonder_usd: number;
   sam_usd: number;
   calls: number;
+  paid_usd?: number | null;
 }
 
 export type ReportStatus = "verified" | "failed" | "error" | "running";
@@ -176,6 +182,8 @@ export interface JobReport {
   wall_seconds?: number;
   error?: string | null;
   seeds: number[];
+  /** Provenance written into a demo bundle's report.json at export time (how the run was made). */
+  demo_note?: string | null;
 }
 
 // ------------------------------------------------------------------ events
@@ -232,6 +240,7 @@ export interface ApiJob {
   spec?: TaskSpec | null;
   clarifying_question?: string | null;
   approved?: boolean;
+  auto_approve?: boolean;
   awaiting_approval?: boolean;
   error?: string | null;
 }
@@ -273,6 +282,25 @@ export interface TaskPreset {
 /** A pass rate cell: {passed, total}, "17/20", or a word such as "no video" / "error". */
 export type PassValue = string | number | { passed: number; total: number } | null | undefined;
 
+/** One condition (video + sentence, or sentence only) of a benchmark task, from results.json. */
+export interface BenchCondition {
+  /** "verified" | "failed" | "error", or "missing_video" when the demo video is not recorded. */
+  status: string | null;
+  job_id: string | null;
+  /** Scored against the task's reference checks (bench/tasks.yaml). */
+  ref_first: PassValue;
+  ref_final: PassValue;
+  /** Scored against the run's own spec, as the pipeline judged it (first and last attempt). */
+  own_first: PassValue;
+  own_final: PassValue;
+  repairs: number | null;
+  cost_usd: number | null;
+  wall_s: number | null;
+  agreement_pct: number | null;
+  spec: TaskSpec | null;
+  final_program: string | null;
+}
+
 /** One row of the benchmark table (built from bench/results.json by lib/bench.ts). */
 export interface BenchRow {
   task: string;
@@ -284,6 +312,8 @@ export interface BenchRow {
   judge_agreement?: number | string | null; // "93%" (or a fraction / percent number)
   cost_usd?: number | string | null; // both conditions
   time_s?: number | string | null; // the video + sentence run
+  video?: BenchCondition | null;
+  sentence?: BenchCondition | null;
 }
 
 export interface BenchResults {
@@ -296,6 +326,8 @@ export interface BenchResults {
 export interface DemoIndexEntry {
   id: string;
   title?: string;
+  /** Provenance, e.g. "Stand-in video: ..." (export-demo). */
+  note?: string;
   rules?: string;
   task_id?: string | null;
   status?: string;

@@ -83,6 +83,7 @@ def test_job_repairs_a_failing_program_until_verified(tmp_path, doubles) -> None
     ):
         assert t in types
     assert types.count("seed_done") == 6
+    assert next(e for e in events if e.type == "spec_approved").data["auto"] is True
     root = tmp_path / "job"
     assert (root / "report.json").exists() and (root / "report.md").exists()
     assert "VERIFIED" in (root / "report.md").read_text()
@@ -150,6 +151,9 @@ def test_interactive_approval_can_edit_the_spec(tmp_path, doubles) -> None:
     report = pipeline.run_job(config, approve=approve)
     assert report.spec is not None and report.spec.rationale == "edited by the user"
     assert "q" in seen
+    events = [json.loads(line) for line in (tmp_path / "appr" / "events.jsonl").open()]
+    approved = next(e for e in events if e["type"] == "spec_approved")
+    assert approved["data"]["auto"] is False and approved["data"]["edited"] is True
 
 
 def test_rejected_repair_ends_the_job_as_failed(tmp_path, doubles, monkeypatch) -> None:

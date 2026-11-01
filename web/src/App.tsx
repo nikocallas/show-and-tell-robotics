@@ -1,9 +1,11 @@
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { buttonClass, EmptyState } from "./components/ui";
+import { LIVE_AVAILABLE } from "./config";
 import { ModeProvider, useMode } from "./mode";
 import { BenchPage } from "./pages/Bench";
 import { DemoIndexPage } from "./pages/DemoIndex";
+import { HowItWorksPage } from "./pages/HowItWorks";
 import { JobPage, ReplayPage } from "./pages/Job";
 import { NewTaskPage } from "./pages/NewTask";
 
@@ -35,7 +37,9 @@ export default function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/new" element={<NewTaskPage />} />
+            {/* Without a backend a task can't start: /new explains the pipeline instead. */}
+            <Route path="/new" element={LIVE_AVAILABLE ? <NewTaskPage /> : <HowItWorksPage />} />
+            <Route path="/how" element={<HowItWorksPage />} />
             <Route path="/runs" element={<DemoIndexPage />} />
             <Route path="/jobs/:id" element={<JobPage />} />
             <Route path="/replay/:id" element={<ReplayPage />} />

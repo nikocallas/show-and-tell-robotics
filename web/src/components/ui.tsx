@@ -1,6 +1,12 @@
 /** UI primitives: cards, buttons, chips, banners, toggles, segmented controls. */
 
-import type { ButtonHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react";
+import {
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type VideoHTMLAttributes,
+} from "react";
 import type { JobStatus } from "../types";
 import {
   IconAlert,
@@ -368,6 +374,30 @@ export function Select({
         className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400"
       />
     </span>
+  );
+}
+
+/**
+ * A video boxed at its own aspect ratio once its metadata loads (`fallbackAspect` until then), so
+ * 16:9 and 4:3 clips fill the width without bars.
+ */
+export function AspectVideo({
+  fallbackAspect = 4 / 3,
+  style,
+  onLoadedMetadata,
+  ...rest
+}: VideoHTMLAttributes<HTMLVideoElement> & { fallbackAspect?: number }) {
+  const [aspect, setAspect] = useState<number | null>(null);
+  return (
+    <video
+      {...rest}
+      style={{ ...style, aspectRatio: String(aspect ?? fallbackAspect) }}
+      onLoadedMetadata={(e) => {
+        const v = e.currentTarget;
+        if (v.videoWidth > 0 && v.videoHeight > 0) setAspect(v.videoWidth / v.videoHeight);
+        onLoadedMetadata?.(e);
+      }}
+    />
   );
 }
 

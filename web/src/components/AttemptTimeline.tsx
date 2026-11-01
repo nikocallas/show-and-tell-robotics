@@ -1,6 +1,8 @@
 /** Attempt 0 -> Repair 1 -> ... with k/N passed, a per-scene bar and the one-line diagnosis. */
 
+import type { MediaResolver } from "../hooks";
 import { formatDuration, formatPct } from "../lib/format";
+import { fileName } from "../lib/provenance";
 import {
   attemptAgreement,
   attemptCounts,
@@ -12,6 +14,61 @@ import {
 import { IconCheck, IconClock, IconWrench, IconX, Spinner } from "./icons";
 import { Card, CardHeader, cx } from "./ui";
 import { VerifiedBadge } from "./VerifiedBadge";
+
+/** repair.failure_frames names files seed<seed>_f<i>_t<seconds>s.jpg. */
+function frameInfo(path: string): { seed: number | null; t: number | null } {
+  const m = fileName(path).match(/seed(\d+)_f\d+_t([\d.]+)s\./);
+  return m ? { seed: Number(m[1]), t: Number(m[2]) } : { seed: null, t: null };
+}
+
+/** The frames of the failing scene that Muse Wonder was sent with the failed checks. */
+function RepairFrames({
+  frames,
+  from,
+  fallbackSeed,
+  media,
+}: {
+  frames: string[];
+  from: AttemptState | undefined;
+  fallbackSeed: number | null;
+  media: MediaResolver;
+}) {
+  const seed = frameInfo(frames[0]).seed ?? fallbackSeed;
+  return (
+    <div className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50/70 p-2.5">
+      <p className="text-[11px] font-medium text-zinc-600">
+        What Muse Wonder saw: {frames.length} frame{frames.length === 1 ? "" : "s"}
+        {seed != null ? ` of scene ${seed}` : ""}
+        {from ? ` (${attemptTitle(from)})` : ""}, sent with the failed checks
+      </p>
+      <ol className="mt-2 grid grid-cols-4 gap-1">
+        {frames.map((f, i) => {
+          const url = media(f);
+          const { t } = frameInfo(f);
+          const label = `Frame ${i + 1}${t != null ? ` at ${t.toFixed(2)} s` : ""}`;
+          return (
+            <li key={f}>
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                title={`${label} (opens the full frame)`}
+                className="block overflow-hidden rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+              >
+                <img
+                  src={url}
+                  alt={label}
+                  loading="lazy"
+                  className="aspect-[4/3] w-full bg-zinc-200 object-cover transition-opacity hover:opacity-90"
+                />
+              </a>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
 
 export function attemptTitle(a: Pick<AttemptState, "n" | "kind">): string {
   return a.kind === "initial" || a.n === 0 ? `Attempt ${a.n}` : `Repair ${a.n}`;
@@ -98,10 +155,12 @@ export function AttemptTimeline({
   state,
   selected,
   onSelect,
+  media,
 }: {
   state: JobState;
   selected: number | null;
   onSelect: (n: number) => void;
+  media: MediaResolver;
 }) {
   const verified = isVerified(state);
   const last = state.attempts[state.attempts.length - 1];
@@ -129,6 +188,8 @@ export function AttemptTimeline({
               const c = attemptCounts(a, state.nSeeds);
               const isSel = selected === a.n;
               const ok = a.status === "done" && c.total > 0 && c.passed === c.total;
+              const fedFrom = a.kind === "repair" ? state.attempts.find((x) => x.n === a.n - 1) : undefined;
+              const frames = a.kind === "repair" ? (state.failureFrames[a.n - 1] ?? []) : [];
               return (
                 <li key={a.n} className="relative pb-4 pl-9 last:pb-0">
                   {i < state.attempts.length - 1 && (
@@ -176,6 +237,14 @@ export function AttemptTimeline({
                     )}
                     <p className="mt-2 text-xs text-zinc-500">{statusLine(a, state.nSeeds)}</p>
                   </button>
+                  {frames.length > 0 && (
+                    <RepairFrames
+                      frames={frames}
+                      from={fedFrom}
+                      fallbackSeed={fedFrom?.failedSeeds[0] ?? null}
+                      media={media}
+                    />
+                  )}
                 </li>
               );
             })}

@@ -347,3 +347,38 @@ def test_unknown_or_unfinished_job(tmp_path: Path):
     (job_dir / "report.json").unlink()
     with pytest.raises(FileNotFoundError, match="has the job finished"):
         export_demo(job_dir, tmp_path / "demo", data_dir=data, verbose=False)
+
+
+def test_titles_and_notes_label_runs_and_survive_a_re_export(tmp_path: Path):
+    data, out = tmp_path / "data", tmp_path / "demo"
+    make_job(data)
+    no_bench = tmp_path / "none.json"
+    note = "Stand-in video: a render of the robot, not a human demonstration."
+    export_demo(JOB_ID, out, data_dir=data, bench_results=no_bench, verbose=False,
+                title="Sort by size", note=note)  # fmt: skip
+    export_demo(JOB_ID, out, data_dir=data, bench_results=no_bench, verbose=False)  # keeps both
+    (entry,) = read(out / "index.json")
+    assert (entry["title"], entry["note"]) == ("Sort by size", note)
+    assert read(out / JOB_ID / "report.json")["demo_note"] == note
+    md = (out / JOB_ID / "report.md").read_text()
+    assert md.startswith(f"# Show & Tell job\n\n> {note}\n\n**VERIFIED**")
+    assert "demo_note" not in read(data / "jobs" / JOB_ID / "report.json")  # source untouched
+    export_demo(JOB_ID, out, data_dir=data, bench_results=no_bench, verbose=False, note="")
+    (entry,) = read(out / "index.json")
+    assert "note" not in entry and "demo_note" not in read(out / JOB_ID / "report.json")
+
+
+def test_job_detail_never_carries_an_absolute_local_video_path(tmp_path: Path):
+    data, out = tmp_path / "data", tmp_path / "demo"
+    job_dir = make_job(data)
+    engine = db.make_engine(db.db_path(data))
+    with db.session(engine) as s:  # an API job: the row holds the absolute upload path
+        s.add(db.Job(id=JOB_ID, rules_text="Sort by size.", status="verified",
+                     video_path=str(job_dir / "input" / "demo.mp4"),
+                     report_json=(job_dir / "report.json").read_text()))  # fmt: skip
+        s.commit()
+    engine.dispose()
+    export_demo(JOB_ID, out, data_dir=data, bench_results=tmp_path / "none.json", verbose=False)
+    text = (out / JOB_ID / "job.json").read_text()
+    assert str(tmp_path) not in text
+    assert read(out / JOB_ID / "job.json")["job"]["video"] == f"media/{JOB_ID}/input/demo.mp4"

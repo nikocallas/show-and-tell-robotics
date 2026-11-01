@@ -77,12 +77,13 @@ def report_markdown(r: JobReport) -> str:
         if r.agreement.undecided:
             lines.append(f"- undecided (SAM could not see the object): {r.agreement.undecided}")
         lines += ["", "Ground truth decides pass/fail; SAM is the camera-only second opinion.", ""]
+    billed = f"${r.cost.paid_usd:.2f} billed; " if r.cost.paid_usd is not None else ""
     lines += [
         "## Cost and time",
         "",
-        f"- API cost at list price: ${r.cost.usd:.2f} (Wonder ${r.cost.wonder_usd:.2f}, "
-        f"SAM ${r.cost.sam_usd:.2f}, {r.cost.calls} calls; repeated requests are served from the "
-        "local cache for $0)",
+        f"- API cost: {billed}${r.cost.usd:.2f} at list price (Wonder ${r.cost.wonder_usd:.2f}, "
+        f"SAM ${r.cost.sam_usd:.2f}, {r.cost.calls} calls). List price counts every call; calls "
+        "answered from the local response cache are billed $0.",
         f"- Wall time: {r.wall_seconds / 60:.1f} min",
         "",
     ]

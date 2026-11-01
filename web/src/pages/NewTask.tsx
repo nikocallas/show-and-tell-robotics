@@ -8,16 +8,8 @@ import { loadDemoTasks } from "../demo";
 import { useAsync } from "../hooks";
 import { formatDateTime, objectLabel } from "../lib/format";
 import { useMode } from "../mode";
-import {
-  IconArrowRight,
-  IconCamera,
-  IconCode,
-  IconCube,
-  IconShieldCheck,
-  IconUpload,
-  IconX,
-  Spinner,
-} from "../components/icons";
+import { JUDGING_NOTE, StepsList } from "../components/HowSteps";
+import { IconArrowRight, IconUpload, IconX, Spinner } from "../components/icons";
 import {
   Banner,
   Button,
@@ -36,29 +28,6 @@ function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
-
-const STEPS = [
-  {
-    icon: <IconCamera size={16} />,
-    title: "Watch",
-    body: "SAM 3.1 tracks the hand and every object in your demo video.",
-  },
-  {
-    icon: <IconShieldCheck size={16} />,
-    title: "Write the checks",
-    body: "Muse Wonder turns the video and your sentence into rules and pass/fail checks. You approve or edit them.",
-  },
-  {
-    icon: <IconCode size={16} />,
-    title: "Write the program",
-    body: "A short Python program composes tested robot skills and picks objects by attribute, never by coordinates.",
-  },
-  {
-    icon: <IconCube size={16} />,
-    title: "Test and repair",
-    body: "The program runs on 20 randomized MuJoCo scenes. Failures go back to Muse Wonder with the failed checks and frames, up to 3 repairs.",
-  },
-];
 
 export function NewTaskPage() {
   const { mode, setMode } = useMode();
@@ -348,7 +317,7 @@ export function NewTaskPage() {
                   ))}
                 </div>
               )}
-              {needsScene && (
+              {needsScene && rules.trim() !== "" && (
                 <p className="mt-2 text-xs text-amber-700">
                   Without the video the simulator can't tell which objects to place: pick a scene preset.
                 </p>
@@ -395,7 +364,11 @@ export function NewTaskPage() {
                 {error ? (
                   <span className="text-rose-700">{error}</span>
                 ) : !live ? (
-                  "Switch to the live backend to start a task."
+                  LIVE_AVAILABLE ? (
+                    "Switch to the live backend to start a task."
+                  ) : (
+                    "This hosted demo has no backend: run the app locally (see the README) to start a task."
+                  )
                 ) : !rules.trim() ? (
                   "Write the rules to start."
                 ) : (
@@ -416,25 +389,11 @@ export function NewTaskPage() {
         <Card>
           <div className="px-4 py-5 sm:px-6">
             <h2 className="text-sm font-semibold text-zinc-900">How it works</h2>
-            <ol className="mt-4 space-y-4">
-              {STEPS.map((s, i) => (
-                <li key={s.title} className="flex gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
-                    {s.icon}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-zinc-900">
-                      <span className="mr-1.5 text-zinc-400">{i + 1}</span>
-                      {s.title}
-                    </p>
-                    <p className="mt-0.5 text-xs leading-relaxed text-zinc-500">{s.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <div className="mt-4">
+              <StepsList />
+            </div>
             <p className="mt-5 border-t border-zinc-100 pt-4 text-xs leading-relaxed text-zinc-500">
-              Every scene is judged twice: by the simulator's ground truth, which decides pass or fail,
-              and by SAM 3.1 on the rendered video. The report shows how often they agree.
+              {JUDGING_NOTE}
             </p>
           </div>
         </Card>

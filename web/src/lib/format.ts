@@ -36,6 +36,27 @@ export function binLabel(bin: BinName | string | null | undefined): string {
   return bin.replace(/_/g, " ");
 }
 
+/**
+ * The bins' colours in the renders (showtell/sim/scene.py BIN_RGBA: slate, sand, sage). Left and
+ * right are the robot's: the overhead camera shows them as image left and right; the hero camera
+ * looks back at the robot from across the table, so there the left bin is on the right.
+ */
+export const BIN_COLORS: Record<BinName, { name: string; css: string }> = {
+  left_bin: { name: "slate", css: "#788ca8" },
+  middle_bin: { name: "sand", css: "#b3a180" },
+  right_bin: { name: "sage", css: "#85a185" },
+};
+
+export function binColor(bin: BinName | string | null | undefined): { name: string; css: string } | null {
+  return bin && bin in BIN_COLORS ? BIN_COLORS[bin as BinName] : null;
+}
+
+/** "left bin (slate)": the bin and its colour in the videos. */
+export function binWithColor(bin: BinName | string | null | undefined): string {
+  const c = binColor(bin);
+  return c ? `${binLabel(bin)} (${c.name})` : binLabel(bin);
+}
+
 export function ruleSentence(rule: Rule): string {
   const what = describeSelector(rule.select);
   if (rule.place_in) return `Put ${what} in the ${binLabel(rule.place_in)}.`;

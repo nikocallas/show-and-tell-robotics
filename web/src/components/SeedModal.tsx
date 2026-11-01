@@ -7,15 +7,18 @@ import { seedAgreement, type AttemptState } from "../state";
 import type { TaskSpec } from "../types";
 import { attemptTitle } from "./AttemptTimeline";
 import { IconChevronLeft, IconChevronRight, IconVideo, IconX } from "./icons";
-import { Button, Chip, cx, PassMark, Segmented } from "./ui";
+import { AspectVideo, Button, Chip, cx, PassMark, Segmented } from "./ui";
 
 type Camera = "full" | "overhead" | "judge_angle";
 
 const CAMERAS: { key: Camera; label: string; title: string }[] = [
-  { key: "full", label: "Hero", title: "Cinematic camera" },
+  { key: "full", label: "Hero", title: "Cinematic camera, looking back at the robot from across the table" },
   { key: "overhead", label: "Overhead", title: "Judge clip (overhead): first 25 + last 25 frames" },
   { key: "judge_angle", label: "45°", title: "Judge clip (45°): first 25 + last 25 frames" },
 ];
+
+/** Checks a contact can break; in_bin failures are about where objects ended, not touches. */
+const CONTACT_KINDS = new Set(["untouched", "upright", "unmoved"]);
 
 export function SeedModal({
   attempt,
@@ -77,7 +80,9 @@ export function SeedModal({
   if (!result) return null;
   const ag = seedAgreement(result);
   const failingObjects = new Set(
-    result.checks.filter((c) => !c.passed).flatMap((c) => c.objects ?? []),
+    result.checks
+      .filter((c) => !c.passed && CONTACT_KINDS.has(c.kind))
+      .flatMap((c) => c.objects ?? []),
   );
   const specCheck = (id: string) => spec?.checks.find((c) => c.id === id);
 
@@ -96,10 +101,10 @@ export function SeedModal({
       >
         {/* header */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-100 px-4 py-3 sm:px-5">
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
             <h2 className="text-base font-semibold text-zinc-900">Scene {seed}</h2>
             <PassMark passed={result.passed} label={result.passed ? "Passed" : "Failed"} />
-            <span className="hidden text-xs text-zinc-500 sm:inline">{attemptTitle(attempt)}</span>
+            <Chip tone="muted">{attemptTitle(attempt)}</Chip>
           </div>
           <div className="ml-auto flex items-center gap-1">
             <Button size="sm" variant="ghost" disabled={prev == null} onClick={() => prev != null && onNavigate(prev)} aria-label="Previous scene">
@@ -131,7 +136,7 @@ export function SeedModal({
               </div>
             )}
             {videoUrl && !videoFailed ? (
-              <video
+              <AspectVideo
                 key={videoUrl}
                 src={videoUrl}
                 poster={poster}
@@ -141,13 +146,19 @@ export function SeedModal({
                 loop
                 playsInline
                 onError={() => setVideoFailed(true)}
-                className="aspect-[4/3] w-full rounded-lg bg-zinc-900 object-contain"
+                className="w-full rounded-lg bg-zinc-900 object-contain"
               />
             ) : (
               <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-lg bg-zinc-100 text-center text-sm text-zinc-500">
                 <IconVideo size={22} className="text-zinc-400" />
                 {videoFailed ? "The video could not be loaded." : (noVideoNote ?? "No video was recorded for this scene.")}
               </div>
+            )}
+            {cam?.key === "full" && videoUrl && !videoFailed && (
+              <p className="mt-2 text-xs text-zinc-500">
+                The hero camera looks back at the robot from across the table, so the robot's left bin
+                (slate) appears on the right of the frame; the overhead clip keeps left on the left.
+              </p>
             )}
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
               {result.sim_seconds != null && <span>Simulated time {result.sim_seconds.toFixed(1)} s</span>}
@@ -228,7 +239,11 @@ export function SeedModal({
                           <span className="block text-[11px] text-zinc-500">during {t.during}</span>
                         </span>
                         {bad && (
-                          <Chip tone="danger" className="ml-auto self-start" title="This object is part of a failed check">
+                          <Chip
+                            tone="danger"
+                            className="ml-auto self-start"
+                            title="This object is part of a failed untouched/upright/unmoved check"
+                          >
                             failed check
                           </Chip>
                         )}

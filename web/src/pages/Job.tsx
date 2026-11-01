@@ -1,5 +1,6 @@
 /** Job pages: a live job (snapshot + SSE) and a recorded run replayed from the demo bundle. */
 
+import { useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { downloadUrl } from "../api";
 import { backendLabel, FIXTURE_LABEL, IS_FIXTURE, LIVE_AVAILABLE } from "../config";
@@ -99,6 +100,19 @@ export function JobPage() {
 export function ReplayPage() {
   const { id = "" } = useParams();
   const r = useReplayJob(id);
+  // The replay waits while a scene is open (its controls sit under the dialog), then carries on.
+  const playingRef = useRef(r.playing);
+  playingRef.current = r.playing;
+  const resumeOnClose = useRef(false);
+  const onModalChange = (open: boolean) => {
+    if (open) {
+      resumeOnClose.current = playingRef.current;
+      if (playingRef.current) r.pause();
+    } else if (resumeOnClose.current) {
+      resumeOnClose.current = false;
+      r.play();
+    }
+  };
 
   if (r.loading) return <PageLoading label="Loading recorded run" />;
   if (r.notFound || !r.state) {
@@ -147,12 +161,14 @@ export function ReplayPage() {
     <div className="pb-24">
       <JobView
         state={s}
+        recording={r.recording}
         media={r.media}
         source="replay"
         downloads={downloads}
         banner={banner}
         back={{ label: "Recorded runs", to: "/runs" }}
         noVideoNote={IS_FIXTURE ? "Sample data has no videos." : undefined}
+        onModalChange={onModalChange}
       />
       {r.total > 0 && (
         <ReplayControls

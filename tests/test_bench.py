@@ -63,3 +63,36 @@ def test_reference_rate_scores_programs_against_the_reference_checks() -> None:
     swapped = swapped.replace('"TMP"', '"right_bin"')
     assert rb.reference_rate(task, good, [1000, 1001]) == (2, 2)
     assert rb.reference_rate(task, swapped, [1000, 1001]) == (0, 2)
+
+
+def test_sentence_repairs_and_own_check_gaps_are_shown() -> None:
+    results = {
+        "n_seeds": 20,
+        "tasks": {
+            "task06_color_exc": {
+                "video": {"status": "missing_video"},
+                "sentence": {
+                    "status": "verified",
+                    "repairs": 1,
+                    "attempts": [{"passed": 19, "total": 20}, {"passed": 20, "total": 20}],
+                    "ref_first": [0, 20],
+                    "ref_final": [0, 20],
+                },
+            },
+            "task01_size": {
+                "sentence": {
+                    "repairs": 0,
+                    "attempts": [{"passed": 20, "total": 20}],
+                    "ref_final": [20, 20],
+                }
+            },
+        },
+    }
+    rows = {r[0]: r for r in rb.table_rows(results)}
+    assert rows["task06_color_exc"][4] == "0/20 (1 repair)"
+    assert rows["task01_size"][4] == "20/20"
+    assert rb.own_check_gaps(results) == [
+        "- task06_color_exc (sentence only): 20/20 on its own checks, 0/20 on the reference checks."
+    ]
+    md = rb.results_markdown(results)
+    assert '"no video" = the human demo video' in md and "without the SAM judge" in md

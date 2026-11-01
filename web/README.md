@@ -3,7 +3,7 @@
 Vite + React 18 + TypeScript + Tailwind CSS 3 + react-router. It is the browser front end for the
 pipeline in `showtell/` (CLAUDE.md 5.10): upload a demo, approve the spec, watch 20 simulated test
 scenes fill in live, read the attempts and the report. It can also replay recorded runs with no
-backend at all (demo mode), which is what the hosted Vercel deploy shows.
+backend at all (demo mode), which is what a Vercel deploy serves by default.
 
 | Page | Route | What it shows |
 | --- | --- | --- |
@@ -82,7 +82,8 @@ demo/<id>/program.py           the final program
 demo/media/<id>/<path>         videos, thumbnails, keyframes and repair frames at their job-folder
                                paths, e.g. demo/media/<id>/attempts/0/seed_3000/full.mp4
 demo/bench.json                copy of bench/results.json, when it exists (Benchmark page)
-demo/tasks.json                optional task presets [{id, rules, objects, demo}] (not exported)
+demo/tasks.json                task presets [{id, index, rules, objects, demo, video, has_video}], the
+                               GET /api/tasks shape (New task and Benchmark pages)
 ```
 
 Media paths starting with `media/` are relative to the bundle root, so the app loads
@@ -111,7 +112,7 @@ page shows the final report directly.
   are replayed on connect (the client de-duplicates, batches bursts, and falls back to polling the
   snapshot every 3 s if the stream can't connect)
 - `GET /api/jobs/{id}/report.md`, `/report.json`, `/program.py`
-- `GET /api/tasks` -> `[{id, rules, objects, demo, video, has_video}]`
+- `GET /api/tasks` -> `[{id, index, rules, objects, demo, video, has_video}]`
 - `GET /api/bench` -> `bench/results.json` as `bench/run_bench.py` writes it (`{tasks: {<task_id>:
   {video, sentence}}, updated_at, n_seeds}`); `src/lib/bench.ts` turns it into the same cells as
   `bench/results.md`

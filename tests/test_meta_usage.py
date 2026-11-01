@@ -103,3 +103,15 @@ def test_cost_cli_with_missing_log() -> None:
     result = CliRunner().invoke(app, ["cost"])
     assert result.exit_code == 0, result.output
     assert "Meta Model API usage" in result.output
+
+
+def test_tag_cached_says_whether_a_stage_was_served_from_the_cache() -> None:
+    t0 = time.time()
+    log_usage(kind="wonder", tag="job:spec", cached_locally=True, input_tokens=10)
+    log_usage(kind="wonder", tag="job:program", input_tokens=10)
+    log_usage(kind="wonder", tag="job:program", cached_locally=True, input_tokens=10)
+    assert usage.tag_cached("job:spec") is True
+    assert usage.tag_cached("job:program") is False  # one of its calls was billed
+    assert usage.tag_cached("job:repair1") is None  # no such call
+    assert usage.tag_cached("job:spec", since=time.time() + 60) is None
+    assert usage.tag_cached("job:spe") is None and usage.tag_cached("job:spec", since=t0) is True

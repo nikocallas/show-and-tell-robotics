@@ -119,10 +119,11 @@ class AttemptReport(BaseModel):
 
 
 class CostSummary(BaseModel):
-    usd: float = 0.0
+    usd: float = 0.0  # list price of every call, including responses served from the local cache
     wonder_usd: float = 0.0
     sam_usd: float = 0.0
     calls: int = 0
+    paid_usd: float | None = None  # what was billed (cache hits cost $0); None in older reports
 
 
 class JobConfig(BaseModel):

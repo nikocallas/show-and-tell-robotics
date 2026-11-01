@@ -197,6 +197,19 @@ class UsageSummary:
         return t
 
 
+def tag_cached(tag: str, *, since: float | None = None, path: Path | None = None) -> bool | None:
+    """True when every logged call with exactly this tag (at/after ``since``) was served from the
+    local cache, False when any was billed, None when there was no such call."""
+    records = [
+        rec
+        for rec in read_log(path)
+        if rec.get("tag") == tag and (since is None or float(rec.get("ts", 0.0) or 0.0) >= since)
+    ]
+    if not records:
+        return None
+    return all(bool(rec.get("cached_locally")) for rec in records)
+
+
 def summarize(
     path: Path | None = None, *, since: float | None = None, tag_prefix: str | None = None
 ) -> UsageSummary:
