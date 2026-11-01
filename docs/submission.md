@@ -283,13 +283,12 @@ On our development machine, each 20-scene attempt of the task-6 run was simulate
    the change on the benchmark.
 3. Harder scenes (more objects, clutter) to exercise the repair loop and the SAM judge on more failures.
 4. A real-arm pilot: run a verified program on a physical Panda through the same skill API.
-5. The hosted demo on Vercel, replaying the recorded runs **[pending: deploy]**.
 
 ## Links
 
 - Repository: [pending: URL and visibility, per the hackathon rules]
 - Demo video: [pending: recording, see `docs/demo_script.md`]
-- Hosted demo: [pending: Vercel deploy]
+- Hosted demo: <https://show-and-tell-robotics.vercel.app> (demo mode: replays the two recorded runs, no backend)
 
 <!-- sources:
 Benchmark, bench/results.json (updated_at "2026-10-31 15:51:13", n_seeds 20):
@@ -352,5 +351,5 @@ Code facts:
 - disk cache by request hash, cache hits logged: showtell/meta/cache.py, showtell/meta/wonder.py call_json, showtell/meta/usage.py
 - glass between the objects and the bins: showtell/sim/randomizer.py (module docstring, GLASS_X), PROGRESS.md Phase 1
 - data/ and cache/ git-ignored: .gitignore; recorded runs in the bundle: web/public/demo/<id>/ (report.json, events.json)
-- Vercel deploy not done: PROGRESS.md Phase 8
+- hosted demo: https://show-and-tell-robotics.vercel.app, deployed 2026-11-01 with the Vercel CLI from web/ (production build, demo mode); PROGRESS.md Phase 8
 -->

@@ -100,8 +100,8 @@ footage exists today.
 ## Capture checklist
 
 - **Where to record.** Replays come from the demo build: `cd web && npm run build && npx vite
-  preview --port 4173` (production builds open in demo mode), or the Vercel URL once it is deployed
-  [pending: deploy]. Never record from `npm run dev:fixture`: it serves sample data.
+  preview --port 4173` (production builds open in demo mode), or the hosted demo at
+  https://show-and-tell-robotics.vercel.app. Never record from `npm run dev:fixture`: it serves sample data.
 - **Live take, 0:10–0:42.** Start works and Approve appears only in live mode (`uvicorn
   showtell.api.app:app --port 8000`, then `cd web && npm run dev` and open
   `http://localhost:5173/new?live=1`). In demo mode there is no New task form (`/new` shows the How it works

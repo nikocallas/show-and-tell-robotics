@@ -12,8 +12,7 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    Files: `smoke.mp4` (5 s, a hand moving one block), `task01_size.mp4`, `task02_color.mp4`, `task03_size_glass.mp4`,
    `task04_clear.mp4`, `task05_shape.mp4`, `task06_color_exc.mp4`. Blocks Phase 3 acceptance and the benchmark.
 3. **Hackathon rules**: confirm submission fields, video length limit and repo visibility.
-4. **Vercel**: run `vercel login` once in a terminal (the CLI uploads the 39 MB demo bundle) and OK the public
-   deploy of the demo-mode web app.
+4. ~~**Vercel**~~ — logged in and deployed on 2026-11-01: https://show-and-tell-robotics.vercel.app
 5. **Voiceover + submission** (end of project).
 
 ## Current state (2026-11-01)
@@ -26,7 +25,10 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
   A spec supplied with a job now reads "Spec supplied", never "auto-approved".
 - Demo bundle `web/public/demo/` (39 MB, committed): the task-6 repair run and the task-3 stand-in run,
   re-exported through the path guard; spot-checked in the production build.
-- Next: the Vercel deploy (CLI logged in; waits for your OK), then filming → `check-videos` → `smoke` → `bench`.
+- Hosted demo live at https://show-and-tell-robotics.vercel.app (Vercel project `show-and-tell-robotics`,
+  team `laymen`, deployed from `web/` with the CLI; production domain public, no backend).
+- Next: filming → `check-videos` → `smoke` → `bench` (video condition); then re-export and redeploy the demo
+  (`python -m showtell export-demo --job <id>`, then `npx vercel deploy --prod` from `web/`).
 
 ## Verified API facts (from https://dev.meta.ai/docs/*.md, fetched 2026-10-31)
 
@@ -181,8 +183,11 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     (Wonder responses from the cache). SAM judge agreed 120/120, including the failing scene (it saw the red and
     green cubes outside the bins). $1.49 paid (SAM judge only). Hero videos re-rendered at 1280x720 with
     `render-demo` (every outcome matched). Bundle: both runs, 39 MB.
-  - Vercel: the CLI is logged in (you ran `npx vercel login` on 2026-11-01); the public deploy waits for
-    your OK.
+  - Vercel: **deployed** 2026-11-01 at https://show-and-tell-robotics.vercel.app with your OK. Checked as an
+    anonymous visitor: pages, demo JSON, videos (range requests 206) and the link-preview image are public; the
+    task-6 replay shows its provenance note from 0:00 and ends VERIFIED after 1 repair with the diagnosis and the
+    8 frames; all images load. Phase 8 acceptance met with the task-6 run (the story you chose) in place of the
+    task-3 job; `docker build` passed on 2026-10-31 and no dependency has changed since.
   - Demo polish (workflow, 2026-11-01): a QA pass of the production build plus an audit of every public claim
     found 58 issues, all handled: landing page with a "watch it fail, diagnose and fix itself" entry, no dead
     New task form in the hosted demo, replay provenance ("About this recording": sentence only, auto-approved
