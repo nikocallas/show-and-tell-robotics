@@ -16,6 +16,27 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    deploy of the demo-mode web app.
 5. **Voiceover + submission** (end of project).
 
+## Resume here (paused 2026-11-01 for usage limits)
+
+- **State:** commit 8f276ff builds (web) and passes all 467 tests. `web/public/demo/` (39 MB, not committed;
+  regenerate with `python -m showtell export-demo --job <id>`, labels are kept) holds the task-6 repair run
+  `20261101-063309-c15793` and the task-3 stand-in run `20261031-154240-8ca2da`; scanned clean of local paths.
+- **Second review, unfinished:** a live-mode regression run plus web and Python code reviews found 24 issues,
+  saved in `data/review_findings_2026-11-01.json`. The fixers were stopped mid-way; their unverified edits are
+  in `git stash` ("review fixes in progress 2026-11-01"). Inspect with `git stash show -p stash@{0}`, then
+  either apply and finish/verify, or drop it and fix from the findings file.
+- **Fix before exporting any video run:** `export_demo` writes the absolute local video path (with the user
+  name) into report.json/job.json for benchmark and CLI video jobs. The current bundle is not affected.
+- Other open findings: the replay does not show `report.demo_note` in "About this recording"; a spec supplied
+  with the job is labelled "Auto-approved (not reviewed)"; "stand-in" is inferred from the file name only;
+  `Stage.__exit__` calls `tag_cached` unguarded (a corrupt usage-log line would fail a stage); `check-videos`
+  does not warn on iPhone HDR (10-bit HLG) clips; `tests/test_video_check.py` writes into the real `cache/`;
+  in live mode on phones the Demo/Live switch covers a nav link.
+- **Then:** sync `docs/demo_script.md` with the final app (repair frames are now shown in the app, the recorded
+  run's chip reads "Auto-approved (not reviewed)", New task is hidden in demo mode, the stand-in is labelled),
+  deploy the demo to Vercel (CLI logged in; waits for your OK), and after filming: `check-videos` → `smoke` →
+  `bench` (video condition).
+
 ## Verified API facts (from https://dev.meta.ai/docs/*.md, fetched 2026-10-31)
 
 - Base URL `https://api.meta.ai/v1`, Bearer `MODEL_API_KEY`; OpenAI SDK compatible (Responses API).
@@ -169,6 +190,22 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     (Wonder responses from the cache). SAM judge agreed 120/120, including the failing scene (it saw the red and
     green cubes outside the bins). $1.49 paid (SAM judge only). Hero videos re-rendered at 1280x720 with
     `render-demo` (every outcome matched). Bundle: both runs, 39 MB.
-  - Vercel: the connector reaches the account (Hobby), but the CLI is not logged in; a 39 MB bundle needs the
-    CLI (`vercel login` once, by you), and the public deploy waits for your OK.
+  - Vercel: the CLI is logged in (you ran `npx vercel login` on 2026-11-01); the public deploy waits for
+    your OK.
+  - Demo polish (workflow, 2026-11-01): a QA pass of the production build plus an audit of every public claim
+    found 58 issues, all handled: landing page with a "watch it fail, diagnose and fix itself" entry, no dead
+    New task form in the hosted demo, replay provenance ("About this recording": sentence only, auto-approved
+    spec, cached Muse Wonder stages, stand-in video), the 8 frames Wonder saw for the repair, own-spec vs
+    reference scores on the Benchmark page, scene dialog pinned to its attempt, link-preview tags, and "passed
+    20 randomized simulated scenes" instead of "proven". Pipeline: `stage_done.cached` for Wonder stages,
+    `spec_approved.auto`, billed cost next to list price; `export-demo --title/--note`; the benchmark table shows
+    the sentence-only repair and explains "no video" and list-price cost. The exported bundle carries no local
+    paths. A second, independent review of these changes (live-mode regression run, web and Python code review)
+    is running.
+- **Phase 9 — Submission assets**: drafts done; numbers that need the human videos are marked [pending].
+  - `docs/demo_script.md`: under 3 minutes, built around the real task-6 failure → diagnosis → repair, with a
+    decide-once plan for which run fills the repair segment after filming (never re-run to fish for a failure).
+  - `docs/submission.md`: the write-up, every number sourced in a comment block at the end.
+  - README audited against the code and artifacts (judge qualified, status note, pinned Menagerie commit,
+    Docker flags, limitations).
 
