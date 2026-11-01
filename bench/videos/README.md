@@ -31,7 +31,14 @@ pipeline reads where each object ends up, so the bowl each object goes to must m
 | `task05_shape.mp4` | two yellow cylinders, small red block, big blue block | **Cylinders** → **left** bowl; **blocks** → **right** bowl. |
 | `task06_color_exc.mp4` | big red, small green, big blue, small blue | **Red** → **left**, **green** → **right**; **both blue blocks stay where they are** (don't touch them). |
 
-After adding videos, check them with:
+After adding videos, check them first (free, no API calls): names, length, resolution, and a
+contact sheet of 4 frames per video in `data/video_check/` to confirm the framing:
+
+```bash
+.venv/bin/python -m showtell check-videos
+```
+
+Then the API smoke test (tracks the hand in `smoke.mp4`, about $0.02):
 
 ```bash
 .venv/bin/python -m showtell smoke

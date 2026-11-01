@@ -26,6 +26,33 @@ def smoke(
     raise typer.Exit(code=0 if report["ok"] else 1)
 
 
+@app.command("check-videos")
+def check_videos(
+    folder: Path = typer.Option(Path("bench/videos"), help="Folder with the demo videos"),
+) -> None:
+    """Check the human demo videos (no API calls) and write a contact sheet for each."""
+    from rich.table import Table
+
+    from showtell.perception.video_check import check_folder
+
+    sheets = settings.SHOWTELL_DATA_DIR / "video_check"
+    results = check_folder(folder, sheet_dir=sheets)
+    table = Table(title=f"Demo videos in {folder}")
+    for col in ("File", "Status", "Size", "Length", "Problems"):
+        table.add_column(col)
+    style = {"ok": "green", "warn": "yellow", "error": "red", "missing": "dim"}
+    for r in results:
+        size = f"{r.width}x{r.height} @ {r.fps:g} fps" if r.width else "—"
+        length = f"{r.seconds:.1f} s" if r.seconds else "—"
+        table.add_row(
+            r.name, f"[{style[r.status]}]{r.status}[/]", size, length, "; ".join(r.problems)
+        )
+    console.print(table)
+    if any(r.sheet for r in results):
+        console.print(f"Contact sheets (4 frames each, check the framing by eye): {sheets}")
+    raise typer.Exit(code=1 if any(r.status == "error" for r in results) else 0)
+
+
 @app.command("render-scene")
 def render_scene(
     seed: int = typer.Option(1, help="Layout seed"),

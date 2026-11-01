@@ -12,7 +12,9 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    Files: `smoke.mp4` (5 s, a hand moving one block), `task01_size.mp4`, `task02_color.mp4`, `task03_size_glass.mp4`,
    `task04_clear.mp4`, `task05_shape.mp4`, `task06_color_exc.mp4`. Blocks Phase 3 acceptance and the benchmark.
 3. **Hackathon rules**: confirm submission fields, video length limit and repo visibility.
-4. **Voiceover + submission** (end of project).
+4. **Vercel**: run `vercel login` once in a terminal (the CLI uploads the 39 MB demo bundle) and OK the public
+   deploy of the demo-mode web app.
+5. **Voiceover + submission** (end of project).
 
 ## Verified API facts (from https://dev.meta.ai/docs/*.md, fetched 2026-10-31)
 
@@ -159,6 +161,13 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
   - `showtell export-demo --job 20261031-154240-8ca2da` → `web/public/demo/` (17.4 MB); the Runs page and the
     replay work in demo mode (`?demo=1`) with media served from the bundle.
   - A 720p hero render is about 2 MB per scene (44 s), about 40 MB per 20-scene attempt.
-  - Not yet: Docker rebuild with the API, the Vercel deploy (needs your OK), the demo job choice (task 3 has no
-    real failure; task 6 has one).
+  - Docker: the image builds and runs a job end to end (token auth, offscreen rendering, media served).
+  - Demo story (chosen 2026-11-01): the real task-6 failure → diagnosis → repair. Demo run
+    `20261101-063309-c15793` (sentence only until `task06_color_exc.mp4` exists): attempt 0 19/20 (seed 6004,
+    unreachable detour), the same diagnosis, attempt 1 20/20 VERIFIED; it reproduces the benchmark job exactly
+    (Wonder responses from the cache). SAM judge agreed 120/120, including the failing scene (it saw the red and
+    green cubes outside the bins). $1.49 paid (SAM judge only). Hero videos re-rendered at 1280x720 with
+    `render-demo` (every outcome matched). Bundle: both runs, 39 MB.
+  - Vercel: the connector reaches the account (Hobby), but the CLI is not logged in; a 39 MB bundle needs the
+    CLI (`vercel login` once, by you), and the public deploy waits for your OK.
 
