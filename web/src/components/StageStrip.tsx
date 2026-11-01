@@ -4,7 +4,11 @@ import { useEffect, useRef } from "react";
 import { formatDuration } from "../lib/format";
 import {
   attemptCounts,
+  isTerminal,
+  judgeOffReason,
   lastAttempt,
+  programSupplied,
+  repairStopNote,
   stageCached,
   STAGES,
   type JobState,
@@ -19,7 +23,7 @@ const LABELS: Record<StageKey, { label: string; hint: string }> = {
   discover: { label: "Discover", hint: "Muse Wonder lists the objects in the video" },
   track: { label: "Track", hint: "SAM 3.1 tracks the hand and every object" },
   spec: { label: "Spec", hint: "Rules and pass/fail checks, approved before the program is written" },
-  program: { label: "Program", hint: "Muse Wonder writes the robot program" },
+  program: { label: "Program", hint: "Muse Wonder writes the robot program, unless the job supplies one" },
   verify: { label: "Verify", hint: "Run the program on randomized simulated scenes" },
   judge: { label: "Judge", hint: "SAM 3.1 checks the rendered scenes" },
   repair: { label: "Repair", hint: "Diagnose failures and patch the program" },
@@ -29,12 +33,44 @@ const LABELS: Record<StageKey, { label: string; hint: string }> = {
 const CACHED_HINT =
   "Served from the local response cache: Muse Wonder had already answered this exact request, so the stage took no time and made no new API call.";
 
-function hint(key: StageKey, state: JobState): string {
-  if (key === "spec") {
-    if (state.specApproved && state.specAutoApproved) {
-      return "Rules and pass/fail checks. This run approved the spec automatically, without review (benchmark and non-interactive runs do)";
+/** What the data says about the spec: where it came from and whether (and how) it was approved. */
+function specHint(state: JobState): string {
+  const given = state.specSource === "given";
+  const base = given
+    ? "Rules and pass/fail checks supplied with the job (Muse Wonder did not write them)"
+    : "Rules and pass/fail checks";
+  if (state.awaitingApproval) {
+    return `${base}. Waiting for approval: the program is written only once the spec is approved`;
+  }
+  if (state.specApproved) {
+    if (state.sawAwaitingApproval || state.specEdited) {
+      const edits = state.specEdited ? " with edits" : "";
+      return `${base}. The run paused for approval, and the spec was approved${edits} before the program was written`;
     }
-    if (state.sawAwaitingApproval) return "Rules and pass/fail checks, reviewed and approved before the program is written";
+    if (state.specAutoApproved && !given) {
+      return `${base}. This run approved the spec automatically, without review (benchmark and non-interactive runs do)`;
+    }
+    return given ? `${base}. The run used them without pausing for approval` : base;
+  }
+  if (state.sawAwaitingApproval && isTerminal(state.status)) {
+    return `${base}. The run stopped before the spec was approved`;
+  }
+  return given ? base : LABELS.spec.hint;
+}
+
+function hint(key: StageKey, state: JobState): string {
+  const st = state.stages[key];
+  if (key === "spec") return specHint(state);
+  if (key === "program" && programSupplied(state)) {
+    return "Program supplied with the job and checked by the sandbox: Muse Wonder did not write it";
+  }
+  if (key === "judge" && st.status === "skipped") {
+    const why = judgeOffReason(state);
+    if (why) return `${LABELS.judge.hint}. In this run ${why}`;
+  }
+  if (key === "repair" && st.status === "skipped" && state.status === "failed") {
+    const why = repairStopNote(state);
+    if (why) return `${LABELS.repair.hint}. ${why}`;
   }
   return LABELS[key].hint;
 }
@@ -79,6 +115,9 @@ function subText(key: StageKey, st: StageState, state: JobState): { text: string
         return { text: `${rounds} round${rounds === 1 ? "" : "s"}`, wide: cached ? ", cached" : undefined };
       }
       if (cached) return { text: "Cached" };
+      if ((key === "spec" && state.specSource === "given") || (key === "program" && programSupplied(state))) {
+        return { text: "Supplied" };
+      }
       const t = st.seconds > 0 ? formatDuration(st.seconds) : "Done";
       if ((key === "verify" || key === "judge") && state.attempts.length > 1) return { text: t, wide: " total" };
       return { text: t };

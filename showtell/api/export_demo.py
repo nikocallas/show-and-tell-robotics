@@ -16,15 +16,22 @@ bundle web/README.md documents ("Demo bundle"):
                                      judge_angle.mp4; the input and normalized videos, keyframes
                                      and repair frames
 Media paths are relative to the bundle root, so the web app (web/src/demo.ts demoMediaUrl) loads
-them from /demo/media/<job_id>/<rel path>. `--title` and `--note` label a run in the hosted demo
-(for example "Stand-in video: ..."); a later export of the same job keeps them unless replaced.
+them from /demo/media/<job_id>/<rel path>. A media file outside the job folder (an older CLI or
+benchmark run's --video) is copied to media/<job_id>/input/<name>. The bundle is public: an export
+that would write a local path (under the repo, the home folder, the temp folder, the data or the
+job folder) into any of its JSON or Markdown files is refused before anything is written.
+`--title` and `--note` label a run in the hosted demo (for example "Stand-in video: ..."); a later
+export of the same job keeps them unless replaced.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import shutil
+import tempfile
 import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +39,7 @@ from pydantic import BaseModel
 
 from showtell.api import db
 from showtell.api.jobs import (
+    MEDIA_EXTS,
     attempt_view_from_report,
     failure_frames,
     folder_media,
@@ -43,6 +51,7 @@ from showtell.api.jobs import (
     valid_job_id,
 )
 from showtell.config import ROOT, settings
+from showtell.contracts import Event
 
 DEFAULT_OUT = Path("web/public/demo")
 SEED_MEDIA = ("full.mp4", "thumb.jpg", "judge.mp4", "judge_angle.mp4")
@@ -54,6 +63,27 @@ class ExportResult(BaseModel):
     files: int = 0  # media files copied
     bytes: int = 0
     missing: list[str] = []  # media referenced by the report/events but not on disk
+
+
+def _absolute_media(value: str) -> bool:
+    """An absolute local path to a media file. Unlike `is_media_path` it may contain spaces (a
+    checkout in "Meta Hackathon", say): it must be mapped, since it may never reach the bundle.
+    Only the API's media URLs (/media/jobs/...) are left alone; /media/<user>/... is where Linux
+    mounts USB drives."""
+    return (
+        0 < len(value) <= 1024
+        and "\n" not in value
+        and value.lower().endswith(MEDIA_EXTS)
+        and not value.startswith("/media/jobs/")
+        and Path(value).is_absolute()
+    )
+
+
+def _bundle_name(name: str) -> str:
+    """A file name for a bundle path, cleaned like an API upload (letters, digits, _ and -)."""
+    p = Path(name)
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", p.stem).strip("_")[:80] or "video"
+    return f"{stem}{p.suffix.lower()}"
 
 
 class _Bundle:
@@ -76,7 +106,34 @@ class _Bundle:
                 return cand.resolve()
         return None
 
+    def _add_external(self, value: str, src: Path | None) -> str:
+        """input/<name> for a file outside the job folder: copied when found (else the job
+        folder's own input/<name>, where the pipeline links a video given from outside), and
+        otherwise reported missing. Either way the bundle names it by its bundle path, never by
+        the local one."""
+        rel = f"input/{_bundle_name(Path(value).name)}"
+        if src is None and (self.job_dir / rel).is_file():
+            src = self.job_dir / rel
+        if src is not None:
+            self.files[rel] = src
+        else:
+            self.files.setdefault(rel, None)
+        return self.prefix + rel
+
+    def _map_absolute(self, value: str) -> str:
+        try:
+            rel = Path(value).resolve().relative_to(self.job_dir.resolve()).as_posix()
+        except (OSError, ValueError):  # outside the job folder
+            return self._add_external(value, self._external(value))
+        if (self.job_dir / rel).is_file():
+            self.files[rel] = self.job_dir / rel
+        else:
+            self.files.setdefault(rel, None)
+        return self.prefix + rel
+
     def _map(self, value: str) -> str:
+        if _absolute_media(value):
+            return self._map_absolute(value)
         if not is_media_path(value):
             return value
         rel = media_rel(value, self.job_dir)
@@ -85,9 +142,7 @@ class _Bundle:
             return self.prefix + rel
         external = self._external(value)
         if external is not None:
-            rel = f"input/{external.name}"
-            self.files[rel] = external
-            return self.prefix + rel
+            return self._add_external(value, external)
         if rel is not None:
             self.files.setdefault(rel, None)
             return self.prefix + rel
@@ -155,10 +210,25 @@ def _default_media(job_dir: Path) -> list[str]:
     return [r for r in rels if is_media_path(r) and (job_dir / r).is_file()]
 
 
-def _job_row(report: dict[str, Any], row: db.Job | None, job_id: str) -> db.Job:
-    """The DB row, or an unsaved one built from the report (folder-only exports)."""
+def _run_flags(report: dict[str, Any], events: list[Event]) -> tuple[bool, bool]:
+    """(auto_approve, use_judge) as the run went, for a job without a database row (CLI or
+    benchmark). They mean what the API's columns mean: auto_approve = the job did not pause for
+    spec approval (the pipeline emits awaiting_approval exactly when it pauses; whether anyone
+    reviewed the spec is spec_approved's `auto`, in the events), use_judge = the SAM judge ran."""
+    paused = any(e.type == "awaiting_approval" for e in events)
+    judged = any(e.type == "judge_done" for e in events) or any(
+        isinstance(a, dict) and bool(a.get("agreement")) for a in report.get("attempts") or []
+    )
+    return not paused, judged
+
+
+def _job_row(
+    report: dict[str, Any], row: db.Job | None, job_id: str, events: list[Event]
+) -> db.Job:
+    """The DB row, or an unsaved one built from the report and events (folder-only exports)."""
     if row is not None:
         return row
+    auto_approve, use_judge = _run_flags(report, events)
     return db.Job(
         id=job_id,
         created_at=float(report.get("created_at") or time.time()),
@@ -169,15 +239,19 @@ def _job_row(report: dict[str, Any], row: db.Job | None, job_id: str) -> db.Job:
         task_id=report.get("task_id"),
         object_ids_json=db.dumps(report.get("object_ids") or []),
         n_seeds=len(report.get("seeds") or []) or 20,
+        auto_approve=auto_approve,
+        use_judge=use_judge,
         spec_json=db.dumps(report.get("spec")),
         approved=report.get("spec") is not None,
         error=report.get("error"),
     )
 
 
-def _job_detail(report: dict[str, Any], row: db.Job | None, job_dir: Path, job_id: str) -> dict:
+def _job_detail(
+    report: dict[str, Any], row: db.Job | None, job_dir: Path, job_id: str, events: list[Event]
+) -> dict:
     """GET /api/jobs/<id> shape (relative media paths), built from the final report."""
-    job = job_view(_job_row(report, row, job_id))
+    job = job_view(_job_row(report, row, job_id, events))
     # The report's video path is relative to the job folder; the database row may hold an
     # absolute local path, which must not end up in a public bundle.
     job.update(
@@ -227,6 +301,53 @@ def _index_entry(report: dict[str, Any], job_id: str) -> dict[str, Any]:
     }
 
 
+def _with_note(md: str, note: str) -> str:
+    """report.md with `note` as a blockquote under its title. Every line is quoted, so a note
+    with paragraphs (or a line starting with #) stays inside the quote, and a blank line closes
+    it, so the report's first line after the title is not pulled into it."""
+    head, _, rest = md.partition("\n")
+    quoted = "\n".join(f"> {line}".rstrip() for line in note.splitlines())
+    return f"{head}\n\n{quoted}\n\n{rest.lstrip(chr(10))}"
+
+
+def _local_roots(*folders: Path) -> list[str]:
+    """Absolute local folders (as given and resolved) whose paths must not reach a bundle."""
+    roots: set[str] = set()
+    for folder in folders:
+        for p in (folder.absolute(), folder.resolve()):
+            if len(p.parts) >= 2:  # never "/" itself
+                roots.add(str(p))
+    return sorted(roots, key=len, reverse=True)
+
+
+def _strings(doc: Any) -> Iterator[str]:
+    """Every string of a JSON-like document, dict keys included (a Markdown text is one)."""
+    if isinstance(doc, str):
+        yield doc
+    elif isinstance(doc, dict):
+        for key, value in doc.items():
+            yield str(key)
+            yield from _strings(value)
+    elif isinstance(doc, (list, tuple)):
+        for value in doc:
+            yield from _strings(value)
+
+
+def _refuse_local_paths(docs: dict[str, Any], roots: list[str]) -> None:
+    """Raise ValueError naming the first bundle file (and string) that contains a path under one
+    of `roots`. Strings are searched decoded, so a JSON escape cannot hide a path; nothing has
+    been written to the bundle at that point."""
+    if not roots:
+        return
+    pattern = re.compile(r"(?<![\w.-])(?:" + "|".join(map(re.escape, roots)) + r")(?![\w.-])")
+    for name, doc in docs.items():
+        for s in _strings(doc):
+            if pattern.search(s):
+                raise ValueError(
+                    f"refusing to export: {name} would publish a local path: {s[:300]!r}"
+                )
+
+
 def _write_json(path: Path, obj: Any, pretty: bool = True) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(obj, indent=2 if pretty else None, ensure_ascii=False)
@@ -260,7 +381,10 @@ def export_demo(
     verbose: bool = True,
 ) -> ExportResult:
     """Copy a finished job's report, events and media into the demo bundle at `out`. `title` and
-    `note` label the run in the hosted demo; None keeps the labels of an earlier export."""
+    `note` label the run in the hosted demo; None keeps the labels of an earlier export. Raises
+    ValueError, before writing anything, if a bundle file would hold a local path."""
+    from showtell.api.app import list_tasks  # the benchmark page shows each task's sentence
+
     data_dir = Path(data_dir or settings.SHOWTELL_DATA_DIR)
     job_dir, row = _locate(job, data_dir)
     report = _load_report(job_dir, row)
@@ -274,35 +398,56 @@ def export_demo(
     old_title, old_note = _previous_labels(Path(out), job_id)
     title = old_title if title is None else title.strip() or None
     note = old_note if note is None else note.strip() or None
+    events = read_events(job_dir / "events.jsonl")
     report_out = bundle.rewrite(report)
-    if note:
-        report_out["demo_note"] = note
-    events_out = bundle.rewrite(
-        [ev.model_dump(mode="json") for ev in read_events(job_dir / "events.jsonl")]
-    )
-    detail_out = bundle.rewrite(_job_detail(report, row, job_dir, job_id))
-    files, size, missing = bundle.copy_to(out / "media" / job_id)
-
-    _write_json(out / job_id / "report.json", report_out)
-    _write_json(out / job_id / "events.json", events_out, pretty=False)
-    _write_json(out / job_id / "job.json", detail_out, pretty=False)
+    events_out = bundle.rewrite([ev.model_dump(mode="json") for ev in events])
+    detail_out = bundle.rewrite(_job_detail(report, row, job_dir, job_id, events))
+    if note:  # job.json carries the same report as report.json
+        report_out["demo_note"] = detail_out["report"]["demo_note"] = note
+    md = None
     if (job_dir / "report.md").is_file():
         md = (job_dir / "report.md").read_text(encoding="utf-8")
         if note:  # the downloaded report says how the run was made, too
-            head, _, rest = md.partition("\n")
-            md = f"{head}\n\n> {note}\n{rest}"
+            md = _with_note(md, note)
+    entry = _index_entry(report, job_id)
+    entry.update({k: v for k, v in (("title", title), ("note", note)) if v})
+    bench = Path(bench_results or ROOT / "bench" / "results.json")
+    bench_text = bench.read_text(encoding="utf-8") if bench.is_file() else None
+    try:
+        bench_doc = json.loads(bench_text) if bench_text is not None else None
+    except ValueError:
+        bench_doc = bench_text
+    tasks = list_tasks()
+    try:
+        home = [Path.home()]
+    except RuntimeError:  # no home folder in this environment
+        home = []
+    local = [ROOT, *home, Path(tempfile.gettempdir()), data_dir, job_dir]
+    _refuse_local_paths(
+        {
+            f"{job_id}/report.json": report_out,
+            f"{job_id}/events.json": events_out,
+            f"{job_id}/job.json": detail_out,
+            f"{job_id}/report.md": md,
+            "index.json": entry,
+            f"bench.json (from {bench.name})": bench_doc,
+            "tasks.json": tasks,
+        },
+        _local_roots(*local),
+    )
+
+    files, size, missing = bundle.copy_to(out / "media" / job_id)
+    _write_json(out / job_id / "report.json", report_out)
+    _write_json(out / job_id / "events.json", events_out, pretty=False)
+    _write_json(out / job_id / "job.json", detail_out, pretty=False)
+    if md is not None:
         (out / job_id / "report.md").write_text(md, encoding="utf-8")
     if report.get("final_program"):
         (out / job_id / "program.py").write_text(report["final_program"], encoding="utf-8")
-    entry = _index_entry(report, job_id)
-    entry.update({k: v for k, v in (("title", title), ("note", note)) if v})
     _update_index(out / "index.json", entry)
-    bench = Path(bench_results or ROOT / "bench" / "results.json")
-    if bench.is_file():
-        shutil.copy2(bench, out / "bench.json")
-    from showtell.api.app import list_tasks  # the benchmark page shows each task's sentence
-
-    _write_json(out / "tasks.json", list_tasks())
+    if bench_text is not None:  # the text that was checked above, as is
+        (out / "bench.json").write_text(bench_text, encoding="utf-8")
+    _write_json(out / "tasks.json", tasks)
 
     result = ExportResult(job_id=job_id, out=out, files=files, bytes=size, missing=missing)
     if verbose:

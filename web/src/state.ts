@@ -55,8 +55,10 @@ export interface StageState {
   runs: number;
   /** Runs that finished in under CACHE_MAX_S: for a Muse Wonder stage, a local cache hit. */
   fastRuns: number;
-  /** stage_done's `cached` flag, when the pipeline sends one. */
-  cachedFlag: boolean | null;
+  /** Runs whose stage_done carried a `cached` flag (the pipeline sends one for Wonder stages). */
+  flaggedRuns: number;
+  /** Runs whose stage_done said `cached: true`. */
+  cachedRuns: number;
 }
 
 /** Stages whose work is one Muse Wonder call. */
@@ -67,7 +69,7 @@ const WONDER_STAGES: readonly StageKey[] = ["discover", "spec", "program", "repa
  */
 const CACHE_MAX_S = 0.5;
 /** pipeline.py: the notes of a program the job supplied (no Wonder call). */
-const SUPPLIED_PROGRAM_NOTES = "program supplied by the user";
+export const SUPPLIED_PROGRAM_NOTES = "program supplied by the user";
 
 // ------------------------------------------------------------------ attempts
 export type AttemptStatus = "writing" | "ready" | "running" | "done";
@@ -101,6 +103,8 @@ export interface JobState {
   jobId: string;
   rules: string;
   useVideo: boolean;
+  /** The job's use_judge setting (GET /api/jobs/{id}); null when unknown (events, replays). */
+  useJudge: boolean | null;
   taskId: string | null;
   objectIds: string[];
   nSeeds: number;
@@ -121,7 +125,10 @@ export interface JobState {
   /** The pipeline paused for a person to approve the spec (an awaiting_approval event arrived). */
   sawAwaitingApproval: boolean;
   specApproved: boolean;
-  /** Approved without review: the run never paused for approval (CLI and benchmark runs). */
+  /**
+   * A spec Muse Wonder generated went on to the program without review: the run never paused for
+   * approval (CLI and benchmark runs). Never true for a spec the job supplied.
+   */
   specAutoApproved: boolean;
   specEdited: boolean;
   attempts: AttemptState[];
@@ -137,6 +144,7 @@ export interface JobState {
 export interface JobMeta {
   rules?: string;
   useVideo?: boolean;
+  useJudge?: boolean | null;
   taskId?: string | null;
   objectIds?: string[];
   nSeeds?: number;
@@ -159,7 +167,8 @@ function freshStages(): Record<StageKey, StageState> {
       startedAt: null,
       runs: 0,
       fastRuns: 0,
-      cachedFlag: null,
+      flaggedRuns: 0,
+      cachedRuns: 0,
     };
   }
   return out;
@@ -171,6 +180,7 @@ export function initialJobState(jobId: string, meta: JobMeta = {}): JobState {
     jobId,
     rules: meta.rules ?? "",
     useVideo: meta.useVideo ?? true,
+    useJudge: meta.useJudge ?? null,
     taskId: meta.taskId ?? null,
     objectIds: meta.objectIds ?? [],
     nSeeds: meta.nSeeds ?? (seeds.length || DEFAULT_SEEDS),
@@ -424,13 +434,16 @@ export function applyEvent(state: JobState, ev: PipelineEvent): JobState {
       const seconds = num(d.seconds) ?? 0;
       // "approval" and "summary" fold into spec and track: their time counts, not their runs.
       const own = d.stage === key;
+      // Counted per run: a stage that runs more than once (repair) is cached only if every run was.
+      const flag = own ? bool(d.cached) : null;
       s = setStage(s, key, {
         status: "done",
         seconds: prev.seconds + seconds,
         attempt: num(d.attempt) ?? prev.attempt,
         runs: prev.runs + (own ? 1 : 0),
         fastRuns: prev.fastRuns + (own && num(d.seconds) != null && seconds < CACHE_MAX_S ? 1 : 0),
-        cachedFlag: own ? (bool(d.cached) ?? prev.cachedFlag) : prev.cachedFlag,
+        flaggedRuns: prev.flaggedRuns + (flag != null ? 1 : 0),
+        cachedRuns: prev.cachedRuns + (flag === true ? 1 : 0),
       });
       break;
     }
@@ -446,6 +459,12 @@ export function applyEvent(state: JobState, ev: PipelineEvent): JobState {
       }
       s.specSource = specSource(d.source) ?? s.specSource;
       s.mediaPath = str(d.media_path) ?? s.mediaPath;
+      if (s.specSource === "given") {
+        // pipeline.py analyses no video when the job supplies the spec.
+        for (const k of ["prep", "discover", "track"] as const) {
+          if (s.stages[k].status === "pending") s = setStage(s, k, { status: "skipped" });
+        }
+      }
       break;
     }
     case "awaiting_approval": {
@@ -466,8 +485,9 @@ export function applyEvent(state: JobState, ev: PipelineEvent): JobState {
       s.specApproved = true;
       s.specEdited = bool(d.edited) ?? false;
       // pipeline.py approves without asking unless the run is interactive; then it first emits
-      // awaiting_approval. An explicit `auto` flag wins when the pipeline sends one.
-      s.specAutoApproved = bool(d.auto) ?? !s.sawAwaitingApproval;
+      // awaiting_approval. An explicit `auto` flag wins when the pipeline sends one. A spec the job
+      // supplied is never "approved without review": its author wrote it (older runs sent auto=true).
+      s.specAutoApproved = s.specSource !== "given" && (bool(d.auto) ?? !s.sawAwaitingApproval);
       s.awaitingApproval = false;
       if (s.status === "awaiting_approval" || s.status === "queued") s.status = "running";
       if (s.stages.spec.status === "waiting") s = setStage(s, "spec", { status: "done" });
@@ -649,6 +669,7 @@ export function metaFromSnapshot(resp: ApiJobResponse): JobMeta {
   return {
     rules: j.rules ?? "",
     useVideo: j.use_video,
+    useJudge: typeof j.use_judge === "boolean" ? j.use_judge : null,
     taskId: j.task_id ?? null,
     objectIds: j.object_ids ?? [],
     nSeeds: num(j.n_seeds) ?? undefined,
@@ -671,9 +692,14 @@ export function stateFromSnapshot(resp: ApiJobResponse): JobState {
   s.spec = j.spec ?? s.spec;
   s.clarifyingQuestion = s.spec?.clarifying_question ?? null;
   s.specApproved = Boolean(j.approved) || s.attempts.length > 0;
-  s.specAutoApproved = s.specApproved && j.auto_approve === true;
+  // Without events: auto_approve says whether the run paused for approval (an interactive job
+  // always does), and only a report says where the spec came from. Until it does, nothing is
+  // claimed about review.
+  const generated = s.specSource === "video" || s.specSource === "sentence";
+  s.specAutoApproved = s.specApproved && j.auto_approve === true && generated;
   s.failureFrames = failureFramesFromApi(resp.attempts);
   s.awaitingApproval = status === "awaiting_approval";
+  s.sawAwaitingApproval = s.awaitingApproval || (s.specApproved && j.auto_approve === false);
   s.error = j.error ?? s.error;
   s.status = status;
   s.stages = deriveStages(s);
@@ -800,27 +826,71 @@ export function pct(stats: { agree: number; n: number } | null | undefined): num
   return stats && stats.n > 0 ? (100 * stats.agree) / stats.n : null;
 }
 
+/** The first program came with the job (pipeline.py's notes for it), not from Muse Wonder. */
+export function programSupplied(s: JobState): boolean {
+  return s.attempts.find((a) => a.n === 0)?.notes === SUPPLIED_PROGRAM_NOTES;
+}
+
 /**
  * A Muse Wonder stage whose answer came from the pipeline's local response cache (the same request
- * had been answered before), so it took no time and made no API call. The pipeline's `cached`
- * flag decides when present; otherwise a Wonder stage that finished in under CACHE_MAX_S on every
- * run was a cache hit. A spec or program the job supplied involves no Wonder call at all.
+ * had been answered before), so it took no time and made no API call. The pipeline's per-run
+ * `cached` flags decide when present (every run must be a cache hit); otherwise a Wonder stage
+ * that finished in under CACHE_MAX_S on every run was a cache hit. A spec or program the job
+ * supplied involves no Wonder call at all, and nothing is claimed until spec_ready / program_ready
+ * (sent after the stage ends) say where the spec or program came from.
  */
 export function stageCached(s: JobState, key: StageKey): boolean {
   const st = s.stages[key];
-  if (st.status !== "done" || st.runs === 0) return false;
-  if (st.cachedFlag != null) return st.cachedFlag;
-  if (!WONDER_STAGES.includes(key)) return false;
-  if (key === "spec" && s.specSource === "given") return false;
-  if (key === "program" && s.attempts.find((a) => a.n === 0)?.notes === SUPPLIED_PROGRAM_NOTES) {
-    return false;
+  if (st.status !== "done" || st.runs === 0 || !WONDER_STAGES.includes(key)) return false;
+  if (key === "spec" && s.specSource !== "video" && s.specSource !== "sentence") return false;
+  if (key === "program") {
+    const first = s.attempts.find((a) => a.n === 0);
+    if (!first?.program || first.notes === SUPPLIED_PROGRAM_NOTES) return false;
   }
+  if (st.flaggedRuns > 0) return st.flaggedRuns === st.runs && st.cachedRuns === st.runs;
   return st.fastRuns === st.runs;
 }
 
 /** The Wonder stages of this job that were served from the local cache, in pipeline order. */
 export function cachedStages(s: JobState): StageKey[] {
   return STAGES.filter((k) => stageCached(s, k));
+}
+
+/**
+ * The reason in the first pipeline log line matching `pattern` (its first group, "" when the line
+ * gives none); null when no line matches.
+ */
+function logReason(s: JobState, pattern: RegExp): string | null {
+  for (const l of s.logs) {
+    const m = l.message.match(pattern);
+    if (m) return (m[1] ?? "").trim().replace(/\.$/, "");
+  }
+  return null;
+}
+
+/**
+ * Why SAM 3.1 is not judging this job's scenes, when the data says: the job's use_judge setting,
+ * or pipeline.py's "SAM judge skipped: <reason>" log line. Null when nothing says it is off.
+ */
+export function judgeOffReason(s: JobState): string | null {
+  if (s.useJudge === false) return "the judge was off for this job";
+  const why = logReason(s, /^SAM judge skipped\b:?\s*(.*)$/i);
+  if (why == null) return null;
+  return why ? `the judge was skipped (${why})` : "the judge was skipped";
+}
+
+/**
+ * Why the repair loop stopped early, from pipeline.py's log: "repair skipped: <reason>" (no API
+ * key), or "repair <n>: <reason>" (the patched program was rejected). Null when no line says so.
+ */
+export function repairStopNote(s: JobState): string | null {
+  const skipped = logReason(s, /^repair skipped\b:?\s*(.*)$/i);
+  if (skipped != null) return `No repair was attempted${skipped ? `: ${skipped}` : ""}.`;
+  for (const l of s.logs) {
+    const m = l.message.match(/^repair (\d+):\s*(.+)$/i);
+    if (m) return `Repair ${m[1]} stopped: ${m[2].trim().replace(/\.$/, "")}.`;
+  }
+  return null;
 }
 
 /** One line describing what the pipeline is doing right now (`replay`: a recorded run). */

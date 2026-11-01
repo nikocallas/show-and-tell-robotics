@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
+import shutil
 import threading
 import time
 import uuid
@@ -82,27 +85,40 @@ def _jsonable(x: Any) -> Any:
 
 class Stage:
     """Context manager that emits stage_started / stage_done with timing. With `usage_tag`, the
-    stage_done event also says whether every model call under that tag came from the local cache."""
+    stage_done event also says whether every model call under that tag came from the local cache
+    (`cached`; left out when the stage made no such call or the usage log cannot be read)."""
 
     def __init__(self, emit: Emitter, name: str, *, usage_tag: str | None = None, **extra: Any):
         self.emit, self.name, self.usage_tag, self.extra = emit, name, usage_tag, extra
+        self.log_offset = 0
 
     def __enter__(self) -> Stage:
         self.t0 = time.time()
+        if self.usage_tag:
+            from showtell.meta.usage import log_size
+
+            self.log_offset = log_size()  # tag_cached reads only what this stage appends
         self.emit("stage_started", stage=self.name, **self.extra)
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        if exc is None:
-            extra = dict(self.extra)
-            if self.usage_tag:
-                from showtell.meta.usage import tag_cached
+        if exc is not None:
+            return
+        seconds = round(time.time() - self.t0, 2)
+        extra = dict(self.extra)
+        cached = self._cached() if self.usage_tag else None
+        if cached is not None:
+            extra["cached"] = cached
+        self.emit("stage_done", stage=self.name, seconds=seconds, **extra)
 
-                cached = tag_cached(self.usage_tag, since=self.t0)
-                if cached is not None:
-                    extra["cached"] = cached
-            seconds = round(time.time() - self.t0, 2)
-            self.emit("stage_done", stage=self.name, seconds=seconds, **extra)
+    def _cached(self) -> bool | None:
+        from showtell.meta.usage import tag_cached
+
+        try:
+            return tag_cached(str(self.usage_tag), offset=self.log_offset)
+        except Exception:  # a label only: usage-log problems never fail a job
+            log.warning("no cached flag for stage %s", self.name, exc_info=True)
+            return None
 
 
 # ------------------------------------------------------------------------------------- helpers
@@ -113,6 +129,31 @@ def _rel(path: str | Path | None, root: Path) -> str | None:
         return str(Path(path).resolve().relative_to(root.resolve()))
     except ValueError:
         return str(path)
+
+
+def _job_video(video: Path, root: Path) -> Path:
+    """The demo video as a file inside the job folder: `video` itself when it is already there
+    (API uploads), else a hard link (or a copy) at input/<name> (CLI --video, the benchmark's
+    bench/videos/...). The report then names it relative to the job folder, never by an absolute
+    local path, and the folder holds everything an export needs. The video caches are keyed by
+    file content, so the link hits them as the original did. A missing file is left as it is."""
+    src = Path(video)
+    try:
+        src.resolve().relative_to(root.resolve())
+        return src
+    except ValueError:
+        pass
+    if not src.is_file():
+        return src
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "_", src.stem).strip("_")[:80] or "video"
+    dst = root / "input" / f"{stem}{src.suffix.lower()}"
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.unlink(missing_ok=True)
+    try:
+        os.link(src, dst)  # same disk: no copy
+    except OSError:
+        shutil.copy2(src, dst)
+    return dst
 
 
 def seed_summary(res: SeedResult, root: Path, sam: list[SamVerdict] | None = None) -> SeedSummary:
@@ -175,8 +216,9 @@ def _perceive(config: JobConfig, root: Path, emit: Emitter, tag: str):
         normalized = video_prep.normalize(Path(config.video_path), prep / "normalized.mp4")
         keyframes = video_prep.keyframes(normalized, n=8, width=768, out_dir=prep / "keyframes")
         info = video_prep.probe(normalized)
-    with Stage(emit, "discover", usage_tag=f"{tag}discover"):
-        discovery = ts.discover(keyframes, tag=f"{tag}discover")
+    discover_tag = f"{tag}discover"
+    with Stage(emit, "discover", usage_tag=discover_tag):
+        discovery = ts.discover(keyframes, tag=discover_tag)
         (root / "discovery.json").write_text(discovery.model_dump_json(indent=2))
     with Stage(emit, "track"):
         concepts = [o.concept for o in discovery.objects]
@@ -382,6 +424,11 @@ def run_job(
         n_seeds=config.n_seeds,
     )
     try:
+        if config.video_path:
+            config = config.model_copy(
+                update={"video_path": _job_video(Path(config.video_path), root)}
+            )
+            report.video = _rel(config.video_path, root)
         object_ids = resolve_objects(config)
         summary: TrackSummary | None = None
         keyframes: list[Path] = []
@@ -399,7 +446,8 @@ def run_job(
             raise ValueError("no sim objects: give a demo video, a task preset or explicit objects")
         report.object_ids = object_ids
 
-        with Stage(emit, "spec", usage_tag=None if config.spec is not None else f"{tag}spec"):
+        spec_tag = f"{tag}spec"
+        with Stage(emit, "spec", usage_tag=None if config.spec is not None else spec_tag):
             if config.spec is not None:
                 spec, media_path = config.spec, "none"
             else:
@@ -409,7 +457,7 @@ def run_job(
                     track_summary=summary,
                     keyframes=keyframes,
                     video_file_id=file_id,
-                    tag=f"{tag}spec",
+                    tag=spec_tag,
                 )
             spec, notes = spec_mod.ensure_checks(spec, object_ids)
             for note in notes + spec_mod.validate_spec(spec, object_ids):
@@ -431,11 +479,14 @@ def run_job(
             edited = False
         report.spec = spec
         (root / "spec_approved.json").write_text(spec.model_dump_json(indent=2))
-        auto = not (config.interactive and approve is not None)  # approved without review
+        # auto: the generated spec went on to the program without anyone reviewing it (a spec the
+        # caller supplied, or one approved interactively, was seen by a person)
+        auto = config.spec is None and not (config.interactive and approve is not None)
         emit("spec_approved", spec=spec, edited=edited, auto=auto)
 
-        program_tag = None if config.program_source is not None else f"{tag}program"
-        with Stage(emit, "program", usage_tag=program_tag):
+        program_tag = f"{tag}program"
+        given_program = config.program_source is not None
+        with Stage(emit, "program", usage_tag=None if given_program else program_tag):
             if config.program_source is not None:
                 from showtell.agent.sandbox import strip_fences, validate_program
                 from showtell.agent.schemas import Program
@@ -444,7 +495,7 @@ def run_job(
                 validate_program(src)
                 program = Program(source=src, notes="program supplied by the user")
             else:
-                program = program_mod.write_program(spec, object_ids, tag=f"{tag}program")
+                program = program_mod.write_program(spec, object_ids, tag=program_tag)
         emit("program_ready", attempt=0, source=program.source, notes=program.notes, kind="initial")
 
         scene_meta = None
@@ -479,8 +530,9 @@ def run_job(
                 emit("log", message="repair skipped: MODEL_API_KEY is not set")
                 break
             emit("repair_started", attempt=n + 1)
+            repair_tag = f"{tag}repair{n + 1}"
             try:
-                with Stage(emit, "repair", usage_tag=f"{tag}repair{n + 1}", attempt=n + 1):
+                with Stage(emit, "repair", usage_tag=repair_tag, attempt=n + 1):
                     first_fail = next(r for r in results if not r.passed)
                     seed_dir = root / "attempts" / str(n) / f"seed_{first_fail.seed}"
                     frames = repair_mod.failure_frames(
@@ -490,7 +542,7 @@ def run_job(
                         out_dir=root / "attempts" / str(n) / "repair_frames",
                     )
                     fix = repair_mod.repair(
-                        spec, source, results, frames, attempt=n + 1, tag=f"{tag}repair{n + 1}"
+                        spec, source, results, frames, attempt=n + 1, tag=repair_tag
                     )
             except repair_mod.RepairError as exc:  # the patch failed the sandbox twice: stop here
                 emit("log", message=str(exc))

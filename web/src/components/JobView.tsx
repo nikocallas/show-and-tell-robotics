@@ -25,12 +25,22 @@ import {
   cachedStages,
   isTerminal,
   isVerified,
+  judgeOffReason,
   lastAttempt,
   pct,
+  programSupplied,
   type JobState,
   type StageKey,
 } from "../state";
-import type { AgreementStats, BenchCondition, BenchRow, Rule, TaskPreset, TaskSpec } from "../types";
+import type {
+  AgreementStats,
+  BenchCondition,
+  BenchRow,
+  Rule,
+  SpecSource,
+  TaskPreset,
+  TaskSpec,
+} from "../types";
 import { AttemptTimeline } from "./AttemptTimeline";
 import { IconArrowRight, IconChevronLeft, IconClock, IconDownload, IconHand, Spinner } from "./icons";
 import { ProgramPanel } from "./ProgramPanel";
@@ -190,23 +200,41 @@ function joinAnd(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
-/** Facts about how a recorded run was made, all read from the recording itself. */
+/**
+ * Facts about how a recorded run was made, all read from the recording itself (the export note,
+ * report.demo_note, is shown on its own).
+ */
 function recordingFacts(run: JobState, preset: TaskPreset | null): ReactNode[] {
   const facts: ReactNode[] = [];
-  if (run.report?.demo_note) facts.push(run.report.demo_note);
   const noHumanVideo =
     preset && preset.has_video === false ? ` No human demo video is recorded for ${preset.id} yet.` : "";
+  const givenSpec = run.specSource === "given";
+  const givenProgram = programSupplied(run);
+  if (givenSpec || givenProgram) {
+    facts.push(
+      givenSpec && givenProgram
+        ? "The spec and the first program were supplied with the job: Muse Wonder wrote neither."
+        : givenSpec
+          ? "The spec was supplied with the job: Muse Wonder did not write it."
+          : "The first program was supplied with the job: Muse Wonder did not write it.",
+    );
+  }
   if (!run.useVideo) {
-    facts.push(`Sentence only: the spec was written without a demonstration video.${noHumanVideo}`);
+    facts.push(
+      run.specSource === "sentence"
+        ? `Sentence only: Muse Wonder wrote the spec from the sentence, without a demonstration video.${noHumanVideo}`
+        : `No demonstration video was used.${noHumanVideo}`,
+    );
   } else if (isStandInVideo(run.videoPath)) {
     facts.push(
       <>
-        Stand-in video: <span className="break-all font-mono text-xs">{fileName(run.videoPath)}</span> is
-        not a recording of a person.{noHumanVideo}
+        The demonstration file is named as a stand-in clip (
+        <span className="break-all font-mono text-xs">{fileName(run.videoPath)}</span>), not as a recording of
+        a person.{noHumanVideo}
       </>,
     );
   }
-  if (run.specApproved && run.specAutoApproved && !run.specEdited) {
+  if (run.specApproved && run.specAutoApproved && !run.specEdited && !givenSpec) {
     facts.push("Auto-approved spec: nobody reviewed it before the program was written.");
   }
   const cached = cachedStages(run)
@@ -229,20 +257,35 @@ function recordingFacts(run: JobState, preset: TaskPreset | null): ReactNode[] {
 // ------------------------------------------------------------------ side cards
 const THIRD: Record<string, string> = { left_bin: "left", middle_bin: "middle", right_bin: "right" };
 
+/** The card's subtitle: what the demonstration contributed to this job's spec. */
+function demonstrationSubtitle(useVideo: boolean, specSource: SpecSource | null): string {
+  if (specSource === "given") {
+    return useVideo ? "Not analysed: the spec was supplied with the job" : "No video: the spec was supplied with the job";
+  }
+  return useVideo ? "What SAM 3.1 tracked in the demonstration video" : "Sentence only: no video was used";
+}
+
 function DemonstrationCard({
   state,
+  specSource,
   media,
   reference,
   preset,
+  replay,
 }: {
   state: JobState;
+  /** Where the spec came from (for replays, the whole recording's answer, known from the start). */
+  specSource: SpecSource | null;
   media: MediaResolver;
   reference: Reference | null;
   preset: TaskPreset | null;
+  /** Recorded runs only: their demo bundle names stand-in clips "standin_..."; uploads keep any name. */
+  replay: boolean;
 }) {
   const url = media(state.videoPath);
   const [failed, setFailed] = useState(false);
-  const standIn = state.useVideo && isStandInVideo(state.videoPath);
+  const standIn = replay && state.useVideo && isStandInVideo(state.videoPath);
+  const given = specSource === "given";
   const notes = state.trackSummary?.notes ?? [];
   // track_summary.py: when it finds fewer than 3 bowls, bins are named by thirds of the frame.
   const thirdsNote = notes.find((n) => /frame thirds/i.test(n));
@@ -263,10 +306,10 @@ function DemonstrationCard({
       <CardHeader
         title="Demonstration"
         icon={<IconHand size={16} />}
-        subtitle={state.useVideo ? "What SAM 3.1 tracked in the demonstration video" : "Sentence only: no video was used"}
+        subtitle={demonstrationSubtitle(state.useVideo, specSource)}
         actions={
           standIn ? (
-            <Chip tone="warning" title="A stand-in clip, not a recording of a person">
+            <Chip tone="warning" title="The file name marks this clip as a stand-in (standin_…), not as a recording of a person">
               Stand-in video
             </Chip>
           ) : undefined
@@ -287,17 +330,28 @@ function DemonstrationCard({
         )}
         {standIn && (
           <p className="-mt-1 text-xs text-amber-800">
-            Stand-in clip, not a human demonstration:{" "}
+            Named as a stand-in clip, not as a human demonstration:{" "}
             <span className="break-all font-mono text-[11px]">{fileName(state.videoPath)}</span>
           </p>
         )}
-        {!state.useVideo ? (
+        {given ? (
           <p className="text-sm leading-relaxed text-zinc-600">
-            Muse Wonder wrote the spec from the rule sentence and the list of objects in the scene,
-            with no video: the benchmark's sentence-only ablation. Pass and fail on this page use this
-            spec's own checks. The Benchmark page scores the same kind of run against reference checks
-            that encode the human demo, where a spec written without the video can score lower.
+            {state.useVideo
+              ? "The spec was supplied with the job, so this video was not analysed: SAM 3.1 tracked nothing in it and Muse Wonder did not write the spec."
+              : "The spec was supplied with the job: Muse Wonder did not write it, and no video was used."}{" "}
+            Pass and fail on this page use the supplied spec's checks.
           </p>
+        ) : !state.useVideo ? (
+          specSource === "sentence" ? (
+            <p className="text-sm leading-relaxed text-zinc-600">
+              Muse Wonder wrote the spec from the rule sentence and the list of objects in the scene,
+              with no video: the benchmark's sentence-only ablation. Pass and fail on this page use this
+              spec's own checks. The Benchmark page scores the same kind of run against reference checks
+              that encode the human demo, where a spec written without the video can score lower.
+            </p>
+          ) : (
+            <p className="text-sm text-zinc-500">No video is used for this job.</p>
+          )
         ) : objects.length ? (
           <div>
             <ol className="space-y-1.5">
@@ -338,7 +392,11 @@ function DemonstrationCard({
         ) : (
           <p className="flex items-center gap-2 text-sm text-zinc-500">
             {tracking && <Spinner size={14} />}
-            {tracking ? "Tracking the hand and objects" : "No track summary for this job."}
+            {tracking
+              ? "Tracking the hand and objects"
+              : !isTerminal(state.status) && state.stages.track.status === "pending"
+                ? "Not tracked yet."
+                : "No track summary for this job."}
           </p>
         )}
         {referenceBox}
@@ -486,6 +544,8 @@ export function JobView({
   const context = useTaskContext(source, whole.taskId);
   const reference = useMemo(() => benchReference(whole, context.bench), [whole, context.bench]);
   const facts = useMemo(() => (replay ? recordingFacts(whole, context.preset) : []), [replay, whole, context.preset]);
+  // How the run was made, in the words of whoever exported it (export-demo --note).
+  const note = replay ? whole.report?.demo_note?.trim() || null : null;
 
   // A new attempt takes focus (the replay story: fail -> diagnose -> rerun).
   const count = state.attempts.length;
@@ -548,7 +608,9 @@ export function JobView({
             )}
             <span className="hidden h-3 w-px bg-zinc-200 sm:block" />
             {state.taskId && <span className="font-mono text-[11px]">{state.taskId}</span>}
-            <span>{state.useVideo ? "Video + sentence" : "Sentence only"}</span>
+            <span>
+              {whole.specSource === "given" ? "Spec supplied" : state.useVideo ? "Video + sentence" : "Sentence only"}
+            </span>
             <span>{state.nSeeds} scenes</span>
             {elapsed != null && (
               <span className="inline-flex items-center gap-1 tabular-nums">
@@ -611,13 +673,30 @@ export function JobView({
 
       {banner}
 
-      {facts.length > 0 && (
+      {(note || facts.length > 0) && (
         <Banner tone="neutral" title="About this recording">
-          <ul className="mt-1 list-disc space-y-1 pl-4 text-xs leading-relaxed text-zinc-600 sm:text-[13px]">
-            {facts.map((f, i) => (
-              <li key={i}>{f}</li>
+          {note && <p className="mt-1 text-xs leading-relaxed text-zinc-600 sm:text-[13px]">{note}</p>}
+          {facts.length > 0 &&
+            (note ? (
+              // The note covers how the run was made; what the events themselves show stays one click away.
+              <details className="group mt-2">
+                <summary className="cursor-pointer list-none text-xs font-medium text-zinc-500 hover:text-zinc-800">
+                  <span className="inline-block transition-transform group-open:rotate-90">›</span> From the
+                  recorded events ({facts.length})
+                </summary>
+                <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed text-zinc-600 sm:text-[13px]">
+                  {facts.map((f, i) => (
+                    <li key={i}>{f}</li>
+                  ))}
+                </ul>
+              </details>
+            ) : (
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs leading-relaxed text-zinc-600 sm:text-[13px]">
+                {facts.map((f, i) => (
+                  <li key={i}>{f}</li>
+                ))}
+              </ul>
             ))}
-          </ul>
         </Banner>
       )}
 
@@ -642,16 +721,22 @@ export function JobView({
             awaiting={state.awaitingApproval}
             approved={state.specApproved}
             autoApproved={state.specAutoApproved}
+            paused={state.sawAwaitingApproval}
             edited={state.specEdited}
             replay={replay}
             onApprove={onApprove}
             pendingText={
-              state.status === "queued"
-                ? "Waiting for the job to start"
-                : state.useVideo && state.stages.spec.status === "pending"
-                  ? "Watching the demonstration first"
-                  : "Muse Wonder is writing the spec"
+              terminal
+                ? "The job stopped before a spec was written."
+                : state.status === "queued"
+                  ? "Waiting for the job to start"
+                  : whole.specSource === "given"
+                    ? "Reading the spec supplied with the job"
+                    : state.useVideo && state.stages.spec.status === "pending"
+                      ? "Watching the demonstration first"
+                      : "Muse Wonder is writing the spec"
             }
+            pendingStopped={terminal}
             readOnlyNote="Recorded run: the spec was approved at this point."
           />
           <div className="lg:hidden">
@@ -670,7 +755,14 @@ export function JobView({
           <div className="hidden lg:block">
             <AttemptTimeline state={state} selected={selected?.n ?? null} onSelect={setPicked} media={media} />
           </div>
-          <DemonstrationCard state={state} media={media} reference={reference} preset={context.preset} />
+          <DemonstrationCard
+            state={state}
+            specSource={whole.specSource}
+            media={media}
+            reference={reference}
+            preset={context.preset}
+            replay={replay}
+          />
           <DetailsCard state={state} />
         </div>
       </div>
@@ -684,6 +776,7 @@ export function JobView({
           onClose={() => setModal(null)}
           onNavigate={(seed) => setModal({ attempt: modal.attempt, seed })}
           noVideoNote={noVideoNote}
+          judgeOff={judgeOffReason(state)}
         />
       )}
     </div>

@@ -2,8 +2,8 @@
 
 Story: show it once → one sentence → the tests → the first program → one real failure → Muse
 Wonder's diagnosis → the patch → 20/20, verified → two judges → task 3 → benchmark → a real arm
-next. The centerpiece is the real task-6 failure and repair. Apart from the opening phone clip, one
-optional insert and the end card, every shot is the web app showing a real run, and every number on
+next. The centerpiece is the real task-6 failure and repair. Apart from the opening phone clip and the end
+card, every shot is the web app showing a real run, and every number on
 screen or in the voiceover comes from a run's `report.json` or from `bench/results.json` (sources at
 the end of this file).
 
@@ -39,7 +39,7 @@ footage exists today.
 | 0:30–0:42 | **Task spec** card with the chip "Needs your approval": rules as sentences with bin tags, and the checks [pending: video run spec; expected red → left bin, green → right bin, blue "Stays put", with "In bin", "In bin" and "Unmoved" checks]. Click **Approve and run**. | "Before any code, Muse Wonder writes the tests: which bowl each color ends in, and that the blue blocks don't move. You can edit them, then approve." |
 | 0:42–0:56 | Cut to the replay of `20261101-063309-c15793` (bottom bar: "Replaying a recorded run"). Lower third, on screen until 2:10: **Recorded run · same task · sentence only (no video)**. Header: "Sentence only". Spec chip "From sentence only": "Put red objects in the left bin.", "Put green objects in the middle bin.", "Leave blue objects where they are." **Program** card, Attempt 0: `blues = scene.objects(color="blue")`, `avoid(blues)`, and `avoid=blues` on every `pick` and `place`. | "This recorded run had only the sentence, so Wonder chose the middle bowl for green. Its first program treats the blue blocks as obstacles on every move." |
 | 0:56–1:16 | **Test scenes** on "A0 · 19/20": nineteen green borders and one red, scene 6004. Open it on the Hero camera: the arm lifts the red cube, stops, lets the cube drop back onto the table, and parks. Under the video: "The program stopped with an error" and "SkillError: cannot reach pose (0.271, -0.050, 0.550) yaw 81 deg (IK error 2.2 cm)". Checks: "All red objects are in the left bin." Fail; "All green objects are in the middle bin." Fail; "All blue objects remain where they started on the table." Pass. | "The program runs on twenty randomized scenes in MuJoCo, with a simulated Franka Panda arm. Nineteen pass. In scene 6004 the arm lifts the red cube and stops: its detour around a blue cube is out of reach. Red and green never reach a bowl." |
-| 1:16–1:34 | **Attempts** card: "Attempt 0", 19/20 passed, with one red cell in its scene bar, then "Repair 1" with its **Diagnosis**. Optional insert (an edit, not a web-app screen), titled "What Muse Wonder received": the 8 frames of scene 6004, t = 4.93–7.73 s, from `web/public/demo/media/20261101-063309-c15793/attempts/0/repair_frames/`. | "Muse Wonder gets the failed checks, the event log, and eight frames from that scene. Its diagnosis, in one line: 'Avoiding the blue cubes forced an unreachable over-the-blue waypoint while carrying the red cube, aborting the program before placement.'" |
+| 1:16–1:34 | **Attempts** card: "Attempt 0", 19/20 passed, with one red cell in its scene bar, then "Repair 1" with its **Diagnosis**. Under Repair 1, the panel "What Muse Wonder saw: 8 frames of scene 6004 (Attempt 0), sent with the failed checks": open one frame (t = 4.93–7.73 s). | "Muse Wonder gets the failed checks, the event log, and eight frames from that scene. Its diagnosis, in one line: 'Avoiding the blue cubes forced an unreachable over-the-blue waypoint while carrying the red cube, aborting the program before placement.'" |
 | 1:34–1:44 | **Program** card on R1, view "Changes +4 −6": the `blues` line, `avoid(blues)` and every `avoid=blues` argument are gone. | "The patch drops the detour. The blue blocks are low enough that the arm's normal travel height clears them." |
 | 1:44–1:54 | **Test scenes** on "R1 · 20/20": all twenty green, 6004 included. Header badge **VERIFIED 20/20 scenes**; the Attempts card reads "After 1 repair." | "All twenty scenes run again, including the nineteen that already passed. Twenty out of twenty: verified." |
 | 1:54–2:10 | Back to A0, scene 6004: the **Simulator** and **SAM 3.1** columns side by side, Fail, Fail, Pass in both, and "SAM agrees on 3 of 3 checks." Then **Run details**: Judge agreement 100%, 120/120 checks; In bin 80/80, Unmoved 40/40. | "Every scene has two judges: the simulator's ground truth, and SAM 3.1 looking only at the rendered video. On this run they agreed on all 120 checks, the failure included. The simulator decides." |
@@ -104,9 +104,8 @@ footage exists today.
   [pending: deploy]. Never record from `npm run dev:fixture`: it serves sample data.
 - **Live take, 0:10–0:42.** Start works and Approve appears only in live mode (`uvicorn
   showtell.api.app:app --port 8000`, then `cd web && npm run dev` and open
-  `http://localhost:5173/new?live=1`). In demo mode the New task page shows Start disabled ("Switch
-  to the live backend to start a task."), and a replay's spec card shows the recorded approval
-  instead of a button. A live job is a new pipeline run and calls the Meta API for any request that
+  `http://localhost:5173/new?live=1`). In demo mode there is no New task form (`/new` shows the How it works
+  page), and a replay's spec card shows the recorded approval instead of a button. A live job is a new pipeline run and calls the Meta API for any request that
   is not already in the local cache. After the Approve click it runs to the end: the API has no
   cancel route, and stopping uvicorn does not interrupt a job that is already in the simulator. So
   the take pays for every request not in the cache, the SAM judge included (the task-6 demo run's
@@ -115,9 +114,9 @@ footage exists today.
   job's tag; use the take only if its spec card matches the benchmark run's spec; and cut to the
   replay at the Approve click. Its results are never shown. If any of that fails, record the New
   task form without pressing Start (no job exists until Start) and take 0:20–0:42 from the video
-  run's replay. That run was auto-approved, so its spec card shows the "Approved" chip, not "Needs
-  your approval", and there is no click: show the chip and keep the voiceover's "You can edit them,
-  then approve."
+  run's replay. That run was auto-approved, so its spec card shows the chip "Auto-approved (not reviewed)", not
+  "Needs your approval", and there is no click: show the chip and keep the voiceover's "You can edit
+  them, then approve."
 - **Cameras.** The hero camera sits beyond the bins on the robot's left, so the left bin is the one
   nearest the camera. When the voiceover names a bowl, switch the scene view to **Overhead** (left
   bin on the left of the image).
@@ -129,12 +128,12 @@ footage exists today.
 - **Lower thirds, verbatim:** "Recorded run · same task · sentence only (no video)" (case B,
   0:42–2:10); "Stand-in video: a simulator render, not a human demo" (only if the task-3 stand-in
   run is shown).
-- **Don't show the stand-in run's Demonstration card.** Its subtitle reads "What SAM 3.1 tracked in
-  the human demo", which is wrong for a render, and its list puts the large blue cube "to middle
-  bin" (SAM found no bowls in the render, so the bins came from frame thirds). The app always
-  renders it right under the Attempts card, so crop it out whenever "First try." is on screen.
-- **Not in the web app:** the 8 repair frames (an edit insert from files) and SAM boxes drawn on the
-  demo video (no screen shows them; don't promise them in the voiceover).
+- **Don't show the stand-in run's Demonstration card.** It is labelled "Stand-in video", but SAM
+  found no bowls in the render, so its list places objects by frame thirds (the large blue cube "ends
+  in the middle third") instead of by bowl. The app always renders it right under the Attempts card,
+  so crop it out whenever "First try." is on screen.
+- **Not in the web app:** SAM boxes drawn on the demo video (no screen shows them; don't promise them
+  in the voiceover).
 - **End-shot fallback.** If the video run is not ready, end on the recorded run's R1 scene 6004 (red
   into the left bin, green into the middle bin), keep its lower third, and change the closing line
   to: "One sentence, one program, twenty test scenes passed. Next: a pilot on a real arm."
@@ -166,7 +165,7 @@ Recorded task-6 run, data/jobs/20261101-063309-c15793/report.json:
 - 1280x720 hero videos, 18.6 s for R1 scene 6004: ffprobe web/public/demo/media/20261101-063309-c15793/attempts/{0,1}/seed_6004/full.mp4 (1280x720, 30 fps; A0 10.17 s, R1 18.63 s)
 - phone clip under 30 s: bench/videos/README.md (setup) and CLAUDE.md 5.4
 - on-screen labels ("Sentence only", "From sentence only", "A0 · 19/20", "R1 · 20/20", "Changes +4 −6", "After 1 repair.", "SAM agrees on 3 of 3 checks.", "Judge agreement" / "100%" / "120/120 checks" (three separate elements in Run details), "Replaying a recorded run"): the demo build at http://localhost:4173/replay/20261101-063309-c15793 (read 2026-11-01) and web/src (JobView, SpecCard, SeedGrid, SeedModal, AttemptTimeline, ProgramPanel, ReplayControls, StageStrip, VerifiedBadge, pages/NewTask, pages/Bench, lib/format, lib/bench)
-- other labels: "Demonstration video", the preset chip (the task's rule sentence), "Use the video", "Review the spec before running", "Start" and the disabled Start's "Switch to the live backend to start a task.": web/src/pages/NewTask.tsx; "Prep", "Discover", "Track": web/src/components/StageStrip.tsx; "VERIFIED" + "20/20 scenes": web/src/components/VerifiedBadge.tsx; "Stays put", "Needs your approval", "Approve and run", "Approved": web/src/components/SpecCard.tsx; "In bin", "Unmoved" and the rule sentences: web/src/lib/format.ts (KIND_LABEL, ruleSentence); "Final (sentence only)": web/src/pages/Bench.tsx; "no video": web/src/lib/bench.ts
+- other labels: "Demonstration video", the preset chip (the task's rule sentence), "Use the video", "Review the spec before running" and "Start": web/src/pages/NewTask.tsx; "Prep", "Discover", "Track": web/src/components/StageStrip.tsx; "VERIFIED" + "20/20 scenes": web/src/components/VerifiedBadge.tsx; "Stays put", "Needs your approval", "Approve and run", "Approved": web/src/components/SpecCard.tsx; "In bin", "Unmoved" and the rule sentences: web/src/lib/format.ts (KIND_LABEL, ruleSentence); "Final (sentence only)": web/src/pages/Bench.tsx; "no video": web/src/lib/bench.ts
 - the Demonstration card always sits right under the Attempts card (right column): web/src/components/JobView.tsx (AttemptTimeline, then DemonstrationCard, then DetailsCard)
 - no approval wait in the recorded runs, so their replays show "Approved": the events.jsonl of 20261101-063309-c15793 and of the benchmark job have spec_ready and spec_approved but no awaiting_approval; `run` defaults to interactive off (showtell/__main__.py) and bench/run_bench.py builds JobConfig without interactive (default False, showtell/contracts.py)
 Task-3 runs:
@@ -191,6 +190,7 @@ Other:
 - hero camera position: showtell/sim/scene.py (hero camera at x 1.55, y 1.15; bins at x 0.67; left_bin at y +0.25)
 - layout breakpoint 1024 px: Tailwind lg in web/src/components/JobView.tsx; replay speeds 1x/2x/4x: web/src/demo.ts SPEEDS
 - at most 3 repairs (case C): showtell/contracts.py max_repairs = 3
-- no SAM box overlay and no repair-frame view in the web app: web/src (failure_frames appears only in web/src/types.ts, never rendered)
+- no SAM box overlay in the web app; the repair frames are shown under Repair 1: web/src/components/AttemptTimeline.tsx ("What Muse Wonder saw: ...")
+- demo mode has no New task form (/new renders HowItWorksPage when no backend is available): web/src/App.tsx; spec chip "Auto-approved (not reviewed)": web/src/components/SpecCard.tsx; "Stand-in video" and "ends in the ... third": web/src/components/JobView.tsx
 -->
 

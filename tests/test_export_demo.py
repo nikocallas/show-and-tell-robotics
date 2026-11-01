@@ -10,6 +10,7 @@ import json
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -17,7 +18,7 @@ from urllib.parse import quote
 import pytest
 
 from showtell.api import db
-from showtell.api.export_demo import export_demo
+from showtell.api.export_demo import _Bundle, _refuse_local_paths, export_demo
 from showtell.contracts import AttemptReport, Event, JobReport, SeedSummary
 from showtell.verify.runner import CheckResult
 
@@ -368,8 +369,23 @@ def test_titles_and_notes_label_runs_and_survive_a_re_export(tmp_path: Path):
     assert "note" not in entry and "demo_note" not in read(out / JOB_ID / "report.json")
 
 
+def local_paths_in(out: Path, *folders: Path) -> list[str]:
+    """`<bundle file>: <local path>` for every text file of the bundle (JSON, Markdown, program)
+    that names one of `folders`, the temp folder, the home folder or the repo, as given or
+    resolved."""
+    roots = (*folders, Path(tempfile.gettempdir()), Path.home(), ROOT)
+    needles = sorted({str(p) for f in roots for p in (f, f.resolve())})
+    hits: list[str] = []
+    for path in sorted(out.rglob("*")):
+        if path.suffix in (".json", ".md", ".py"):
+            text = path.read_text(encoding="utf-8")
+            hits += [f"{path.relative_to(out)}: {n}" for n in needles if n in text]
+    return hits
+
+
 def test_job_detail_never_carries_an_absolute_local_video_path(tmp_path: Path):
-    data, out = tmp_path / "data", tmp_path / "demo"
+    base = tmp_path / "with space"  # like the checkout's folder, "Meta Hackathon"
+    data, out = base / "data", tmp_path / "demo"
     job_dir = make_job(data)
     engine = db.make_engine(db.db_path(data))
     with db.session(engine) as s:  # an API job: the row holds the absolute upload path
@@ -379,6 +395,199 @@ def test_job_detail_never_carries_an_absolute_local_video_path(tmp_path: Path):
         s.commit()
     engine.dispose()
     export_demo(JOB_ID, out, data_dir=data, bench_results=tmp_path / "none.json", verbose=False)
-    text = (out / JOB_ID / "job.json").read_text()
-    assert str(tmp_path) not in text
+    assert local_paths_in(out, base) == []
     assert read(out / JOB_ID / "job.json")["job"]["video"] == f"media/{JOB_ID}/input/demo.mp4"
+
+
+def test_a_video_from_outside_the_job_folder_is_bundled_without_any_local_path(tmp_path: Path):
+    """An older CLI or benchmark run: report.video is the absolute --video path, outside the job
+    folder, in a folder whose name has a space (as in the checkout's "Meta Hackathon")."""
+    base = tmp_path / "with space"
+    data, out = base / "data", tmp_path / "demo"
+    job_dir = make_job(data)
+    shutil.rmtree(job_dir / "input")  # the video was never copied into the job folder
+    video = base / "bench" / "videos" / "task03_size_glass.mp4"
+    video.parent.mkdir(parents=True)
+    video.write_bytes(MP4 + b"bench")
+    report = read(job_dir / "report.json")
+    report["video"] = str(video)
+    (job_dir / "report.json").write_text(json.dumps(report))
+    lines = (job_dir / "events.jsonl").read_text().splitlines()
+    done = json.loads(lines[-1])
+    done["data"]["report"]["video"] = str(video)
+    (job_dir / "events.jsonl").write_text("\n".join([*lines[:-1], json.dumps(done)]) + "\n")
+
+    result = export_demo(job_dir, out, data_dir=data, bench_results=tmp_path / "x", verbose=False)
+    media = f"media/{JOB_ID}/input/task03_size_glass.mp4"
+    assert read(out / JOB_ID / "report.json")["video"] == media
+    assert read(out / JOB_ID / "job.json")["job"]["video"] == media
+    assert read(out / JOB_ID / "job.json")["report"]["video"] == media
+    assert read(out / JOB_ID / "events.json")[-1]["data"]["report"]["video"] == media
+    assert (out / media).read_bytes() == MP4 + b"bench"  # the human video is in the bundle
+    assert result.missing == []
+    assert local_paths_in(out, tmp_path, base, video.parent) == []
+    assert_web_resolves(out, JOB_ID, read(out / JOB_ID / "report.json"))
+
+
+def test_a_moved_outside_video_never_leaks_its_old_path(tmp_path: Path):
+    data, out = tmp_path / "data", tmp_path / "demo"
+    job_dir = make_job(data)
+    report = read(job_dir / "report.json")
+    report["video"] = str(tmp_path / "gone" / "task03_size_glass.mp4")  # moved since the run
+    (job_dir / "report.json").write_text(json.dumps(report))
+    no_bench = tmp_path / "none.json"
+    result = export_demo(job_dir, out, data_dir=data, bench_results=no_bench, verbose=False)
+    media = f"media/{JOB_ID}/input/task03_size_glass.mp4"
+    assert read(out / JOB_ID / "report.json")["video"] == media
+    assert result.missing == ["input/task03_size_glass.mp4"]
+    assert local_paths_in(out, tmp_path) == []
+    # the job folder's own copy (the pipeline links a video given from outside there) is used
+    (job_dir / "input" / "task03_size_glass.mp4").write_bytes(MP4 + b"linked")
+    result = export_demo(job_dir, out, data_dir=data, bench_results=no_bench, verbose=False)
+    assert result.missing == [] and (out / media).read_bytes() == MP4 + b"linked"
+
+
+def test_an_export_that_would_publish_a_local_path_is_refused(tmp_path: Path):
+    data, out = tmp_path / "data", tmp_path / "demo"
+    job_dir = make_job(data)
+    report = read(job_dir / "report.json")
+    report["error"] = f"FileNotFoundError: {job_dir / 'prep' / 'frames.txt'}"  # free text
+    (job_dir / "report.json").write_text(json.dumps(report))
+    kw: dict[str, Any] = {"data_dir": data, "bench_results": tmp_path / "none.json"}
+    with pytest.raises(ValueError, match=f"{JOB_ID}/report.json would publish a local path"):
+        export_demo(job_dir, out, verbose=False, **kw)
+    assert not out.exists()  # refused before anything was written
+
+    make_job(data, "20261031-150000-123456")
+    with pytest.raises(ValueError, match="index.json would publish a local path"):
+        export_demo("20261031-150000-123456", out, verbose=False, title=f"{Path.home()}/x", **kw)
+    bench = tmp_path / "results.json"  # JSON may escape "/" as "\/": still caught
+    bench.write_text('{"error": "' + str(data / "v.mp4").replace("/", "\\/") + ' gone"}')
+    with pytest.raises(ValueError, match=r"bench\.json \(from results\.json\)"):
+        export_demo("20261031-150000-123456", out, data_dir=data, bench_results=bench)
+    assert not out.exists()
+
+
+def test_every_absolute_media_path_is_mapped_except_api_urls(tmp_path: Path):
+    job_dir = make_job(tmp_path / "data")
+    bundle = _Bundle(job_dir, JOB_ID)
+    media = f"media/{JOB_ID}/"
+    assert bundle._map(str(job_dir / "input" / "demo.mp4")) == media + "input/demo.mp4"
+    assert bundle._map("/Volumes/USB stick/Clip 1.MOV") == media + "input/Clip_1.mov"
+    assert bundle._map("/media/niko/usb/task01_size.mp4") == media + "input/task01_size.mp4"
+    assert bundle._map("/media/jobs/other/input/a.mp4") == "/media/jobs/other/input/a.mp4"
+    assert bundle._map("Sort by size, then clip.mp4") == "Sort by size, then clip.mp4"
+    assert bundle.files["input/demo.mp4"] == job_dir / "input" / "demo.mp4"
+    assert bundle.files["input/Clip_1.mov"] is None  # not on this machine: reported missing
+
+
+def test_local_path_guard_reads_keys_and_ignores_lookalikes():
+    roots = ["/home/me"]
+    fine = {"a": "/api/home/me", "b": "/home/me2/x", "c": "see /home/meadow", "d": ["x"]}
+    _refuse_local_paths({"a.json": fine, "b.md": "no paths here", "c.json": None}, roots)
+    with pytest.raises(ValueError, match="a.json"):
+        _refuse_local_paths({"a.json": {"by_path": {"/home/me/clip.mp4": 1}}}, roots)  # a key
+    with pytest.raises(ValueError, match="b.md"):
+        _refuse_local_paths({"b.md": "error:\n/home/me"}, roots)
+    _refuse_local_paths({"a.json": {"x": "/home/me"}}, [])  # no roots: nothing to refuse
+
+
+def test_folder_export_job_json_says_how_the_run_went(tmp_path: Path):
+    """A run without a database row (CLI, benchmark): job.json's auto_approve and use_judge
+    come from its events and report, not from the database defaults (False, True)."""
+    data, out = tmp_path / "data", tmp_path / "demo"
+    job_dir = make_job(data)  # no awaiting_approval, no judge
+    kw: dict[str, Any] = {"data_dir": data, "bench_results": tmp_path / "x", "verbose": False}
+    export_demo(job_dir, out, **kw)
+    job = read(out / JOB_ID / "job.json")["job"]
+    assert (job["auto_approve"], job["use_judge"]) == (True, False)
+
+    paused = Event(type="awaiting_approval", job_id=JOB_ID, data={"spec": None})
+    judged = Event(type="judge_done", job_id=JOB_ID, data={"attempt": 0, "seed": 3000})
+    with (job_dir / "events.jsonl").open("a") as f:
+        f.write(paused.model_dump_json() + "\n" + judged.model_dump_json() + "\n")
+    export_demo(job_dir, out, **kw)
+    job = read(out / JOB_ID / "job.json")["job"]
+    assert (job["auto_approve"], job["use_judge"]) == (False, True)
+
+    make_job(data, "20261031-150000-123456")  # judged, recorded before judge_done was saved
+    folder = data / "jobs" / "20261031-150000-123456"
+    report = read(folder / "report.json")
+    report["attempts"][0]["agreement"] = {"agree": 2, "n": 2, "undecided": 0, "by_kind": {}}
+    (folder / "report.json").write_text(json.dumps(report))
+    export_demo(folder, out, **kw)
+    assert read(out / "20261031-150000-123456" / "job.json")["job"]["use_judge"] is True
+
+
+def test_a_note_with_paragraphs_is_quoted_whole_and_reaches_job_json(tmp_path: Path):
+    data, out = tmp_path / "data", tmp_path / "demo"
+    make_job(data)
+    kw: dict[str, Any] = {"data_dir": data, "bench_results": tmp_path / "x", "verbose": False}
+    note = "Stand-in video: a render.\n\n# Not a heading\nResponses came from the cache."
+    export_demo(JOB_ID, out, note=note, **kw)
+    md = (out / JOB_ID / "report.md").read_text()
+    assert md.startswith(
+        "# Show & Tell job\n\n> Stand-in video: a render.\n>\n> # Not a heading\n"
+        "> Responses came from the cache.\n\n**VERIFIED**\n"
+    )
+    assert read(out / JOB_ID / "report.json")["demo_note"] == note
+    assert read(out / JOB_ID / "job.json")["report"]["demo_note"] == note
+    export_demo(JOB_ID, out, note="", **kw)  # cleared everywhere
+    assert "demo_note" not in read(out / JOB_ID / "job.json")["report"]
+    assert "> " not in (out / JOB_ID / "report.md").read_text()
+
+
+def test_a_note_never_swallows_the_line_after_the_title(tmp_path: Path):
+    data, out = tmp_path / "data", tmp_path / "demo"
+    job_dir = make_job(data)
+    (job_dir / "report.md").write_text("# Show & Tell job\n**VERIFIED**\n")  # no blank line
+    export_demo(JOB_ID, out, data_dir=data, bench_results=tmp_path / "x", verbose=False, note="N")
+    assert (out / JOB_ID / "report.md").read_text() == "# Show & Tell job\n\n> N\n\n**VERIFIED**\n"
+
+
+def test_a_pipeline_run_on_an_outside_video_exports_with_the_video_and_no_local_path(
+    tmp_path: Path,
+):
+    """End to end, the way the benchmark runs the video condition (an absolute --video under the
+    checkout): the pipeline links the video into the job folder and the report names it
+    input/<name>; the export carries it and holds no local path. No model calls: the spec and
+    program are given and the SAM judge is off."""
+    from showtell import pipeline
+    from showtell.agent.schemas import TaskSpec
+    from showtell.contracts import JobConfig
+    from showtell.perception.video_prep import make_test_clip
+    from showtell.sim.scene import get_task
+
+    base = tmp_path / "with space"
+    video = make_test_clip(base / "bench" / "videos" / "task01_size.mp4", seconds=1.0)
+    task = get_task("task01_size")
+    root = base / "data" / "jobs" / "bench-task01_size-video"
+    config = JobConfig(
+        job_id=root.name,
+        rules_text=task.rules,
+        video_path=video,
+        use_video=True,
+        task_id=task.id,
+        n_seeds=1,
+        use_judge=False,
+        spec=TaskSpec.model_validate({**task.reference, "rationale": "given"}),
+        program_source=(ROOT / "examples/reference/task01_size.py").read_text(),
+        out_dir=root,
+    )
+    report = pipeline.run_job(config)
+    assert report.status == "verified", report.error
+    assert report.video == "input/task01_size.mp4"
+    assert (root / report.video).read_bytes() == video.read_bytes()
+    for name in ("report.json", "events.jsonl", "report.md"):
+        assert str(base) not in (root / name).read_text(), name
+
+    out = tmp_path / "demo"
+    result = export_demo(
+        root, out, data_dir=base / "data", bench_results=tmp_path / "x", verbose=False
+    )
+    media = out / "media" / root.name / "input" / "task01_size.mp4"
+    assert media.read_bytes() == video.read_bytes() and result.missing == []
+    assert (
+        read(out / root.name / "report.json")["video"] == f"media/{root.name}/input/task01_size.mp4"
+    )
+    assert local_paths_in(out, tmp_path, base) == []

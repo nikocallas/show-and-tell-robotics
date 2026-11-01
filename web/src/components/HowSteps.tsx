@@ -30,11 +30,12 @@ export const STEPS = [
 ];
 
 /**
- * use_judge defaults on for app jobs (api/app.py) and `showtell run`; bench/run_bench.py turns the
- * SAM judge off for the sentence-only condition.
+ * use_judge defaults on for app jobs (api/app.py) and `showtell run`; the pipeline skips the judge
+ * when the backend has no MODEL_API_KEY; bench/run_bench.py turns it off for the sentence-only
+ * condition.
  */
 export const JUDGING_NOTE =
-  "Every scene is graded by the simulator's ground truth, which decides pass or fail. Runs started from the app or the CLI are also judged by SAM 3.1 on the rendered camera clips, and the report shows how often the two agree. The benchmark's sentence-only rows are graded by ground truth only.";
+  "Every scene is graded by the simulator's ground truth, which decides pass or fail. When the backend has a Meta API key, runs started from the app or the CLI are also judged by SAM 3.1 on the rendered camera clips (unless the judge is switched off), and the report shows how often the two agree. The benchmark's sentence-only rows are graded by ground truth only.";
 
 export function StepsList() {
   return (

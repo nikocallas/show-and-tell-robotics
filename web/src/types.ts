@@ -208,7 +208,14 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** contracts.Event. `data` is untyped JSON; the reducer reads it defensively. */
+/**
+ * contracts.Event. `data` is untyped JSON; the reducer reads it defensively. Fields the web reads
+ * beyond the obvious ones (contracts.py documents them):
+ * - stage_done.cached (Muse Wonder stages only): true = every call of that run of the stage was a
+ *   local cache hit, false = at least one was billed; absent = unknown.
+ * - spec_ready.source: "video" | "sentence" | "given" (the job supplied the spec).
+ * - spec_approved.auto: a generated spec went on without review; false for a supplied spec.
+ */
 export interface PipelineEvent {
   type: EventType | string;
   ts: number;
@@ -241,6 +248,8 @@ export interface ApiJob {
   clarifying_question?: string | null;
   approved?: boolean;
   auto_approve?: boolean;
+  /** Run the SAM 3.1 judge on the rendered clips (it also needs an API key on the backend). */
+  use_judge?: boolean;
   awaiting_approval?: boolean;
   error?: string | null;
 }

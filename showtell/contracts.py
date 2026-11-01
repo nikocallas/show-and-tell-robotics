@@ -1,7 +1,8 @@
 """Shared contracts: pipeline events (streamed to the web app), job config, and the job report.
 
 Job folder layout (under settings.SHOWTELL_DATA_DIR / "jobs" / job_id):
-    input/<video>                     uploaded demo video (optional)
+    input/<video>                     demo video (optional): the upload, or a hard link or copy of
+                                      a video given from outside the folder (CLI --video, bench)
     prep/normalized.mp4, prep/keyframes/kf_00.jpg ...
     track_summary.json, discovery.json, spec.json, spec_approved.json
     attempts/<n>/program.py
@@ -26,12 +27,17 @@ from showtell.verify.runner import CheckResult
 EventType = Literal[
     "job_started",  # {rules, use_video, task_id, n_seeds}
     "stage_started",  # {stage, attempt?}  stage in STAGES
-    "stage_done",  # {stage, seconds, attempt?, info?}
+    # stage_done: {stage, seconds, attempt?, info?, cached?: bool}. cached (Muse Wonder stages
+    # discover/spec/program/repair only): true = every call logged under the stage's usage tag
+    # was a local cache hit, false = at least one was billed; absent = no call or log unreadable
+    "stage_done",
     "track_summary",  # {track_summary: TrackSummary}
     # spec_ready: {spec, source: "video"|"sentence"|"given", media_path: "video"|"keyframes"|"none"}
     "spec_ready",
     "awaiting_approval",  # {spec, clarifying_question}
-    "spec_approved",  # {spec, edited: bool}
+    # spec_approved: {spec, edited: bool, auto: bool}. auto = the generated spec went on to the
+    # program without anyone reviewing it (false when it was approved interactively or supplied)
+    "spec_approved",
     "program_ready",  # {attempt, source, notes, kind: "initial"|"repair", diagnosis?}
     "attempt_started",  # {attempt, seeds: [int]}
     "seed_done",  # {attempt, seed: SeedSummary}

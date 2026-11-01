@@ -170,6 +170,27 @@ def probe(path: Path) -> VideoInfo:
     return VideoInfo(frames, fps, w, h, duration)
 
 
+def probe_color(path: Path) -> dict[str, str]:
+    """``pix_fmt``, ``color_transfer``, ``color_primaries`` and ``color_space`` of the first video
+    stream, as ffprobe names them (fields the file does not tag are left out; {} without
+    ffprobe)."""
+    exe = shutil.which("ffprobe")
+    if exe is None:
+        return {}
+    fields = "stream=pix_fmt,color_transfer,color_primaries,color_space"
+    proc = subprocess.run(
+        [exe, "-v", "error", "-select_streams", "v:0", "-show_entries", fields, "-of", "json"]
+        + [str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"ffprobe failed on {path}: {proc.stderr.strip()[-500:]}")
+    streams = json.loads(proc.stdout or "{}").get("streams") or [{}]
+    return {k: v for k, v in streams[0].items() if isinstance(v, str) and v != "unknown"}
+
+
 def normalize_args() -> list[str]:
     """The ffmpeg arguments between ``-i IN`` and ``OUT`` (also part of the cache key)."""
     # -pix_fmt yuv420p (not in CLAUDE.md's command): phone HDR clips would otherwise come out as

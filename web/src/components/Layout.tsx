@@ -62,22 +62,32 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:gap-6 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 min-[360px]:gap-3 sm:gap-6 sm:px-6 lg:px-8">
           <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="Show & Tell Robotics home">
             <LogoMark size={26} />
-            <span className="text-sm font-semibold tracking-tight text-zinc-900">
+            {/* Below 420 px a backend build's Demo/Live switch needs the room; the hosted demo's chip hides instead. */}
+            <span
+              className={cx(
+                "text-sm font-semibold tracking-tight text-zinc-900",
+                LIVE_AVAILABLE && "hidden min-[420px]:inline",
+              )}
+            >
               Show &amp; Tell
               <span className="ml-1 hidden font-normal text-zinc-400 min-[420px]:inline">Robotics</span>
             </span>
           </Link>
-          <nav aria-label="Main" className="flex min-w-0 items-center gap-0.5">
+          {/* On the narrowest phones the links scroll sideways rather than run under the switch. */}
+          <nav
+            aria-label="Main"
+            className="flex min-w-0 items-center gap-0.5 max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
+          >
             {NAV.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
                 className={({ isActive }) =>
                   cx(
-                    "rounded-md px-2 py-1.5 text-sm font-medium transition-colors sm:px-2.5",
+                    "shrink-0 rounded-md px-1.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-500 min-[360px]:px-2 sm:px-2.5",
                     isActive || alias[pathname] === n.to
                       ? "bg-zinc-100 text-zinc-900"
                       : "text-zinc-500 hover:text-zinc-900",

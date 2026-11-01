@@ -133,8 +133,8 @@ def _sentence_cell(entry: dict | None) -> str:
 
 
 def own_check_gaps(results: dict[str, Any]) -> list[str]:
-    """One line per run whose final program passes its own generated checks more often than the
-    reference checks (the spec it wrote differs from what the demo shows)."""
+    """One line per run whose final program's pass count on its own generated checks differs
+    from its pass count on the reference checks (the spec it wrote is not what the demo shows)."""
     lines = []
     for task_id, conds in results.get("tasks", {}).items():
         for cond in CONDITIONS:
@@ -188,7 +188,8 @@ def results_markdown(results: dict[str, Any]) -> str:
         "yet, so the video condition has not run. Judge agreement = SAM 3.1 on the rendered "
         "clips vs simulator ground truth (video condition). Cost $ = list price of the Meta API "
         "calls each run made, summed over the conditions that ran; responses served from the "
-        "local cache are counted at list price but billed $0.",
+        "local cache are counted at list price but billed $0. Repairs and Time = the video "
+        "condition.",
     ]
     gaps = own_check_gaps(results)
     if gaps:

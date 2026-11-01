@@ -8,6 +8,8 @@ pipeline reads where each object ends up, so the bowl each object goes to must m
 
 - Phone **top-down**, about **80 cm** above a plain, matte table (no patterned cloth). Lock focus/exposure.
 - Good, even light; avoid hard shadows. 1080p, landscape, **under 30 s**, one continuous take.
+- **Turn off HDR** (iPhone: Settings → Camera → Record Video → HDR Video off). HDR clips lose
+  contrast when converted for SAM; `check-videos` warns about them.
 - **Three bowls in a row along the far edge** = the top of the frame. The bowl on the left of the
   frame is the *left bowl*, then *middle*, then *right*. Don't move the bowls during a take.
 - Objects start spread out on the near half of the table (bottom of the frame), a few cm apart.

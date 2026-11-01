@@ -48,8 +48,10 @@ export interface SpecCardProps {
   clarifyingQuestion: string | null;
   awaiting: boolean;
   approved: boolean;
-  /** Approved without anyone reviewing it (the run never paused for approval). */
+  /** A generated spec approved without anyone reviewing it (state.specAutoApproved). */
   autoApproved?: boolean;
+  /** The run paused for a person to approve the spec (state.sawAwaitingApproval). */
+  paused?: boolean;
   edited: boolean;
   /** A recorded run: nobody can approve it here. */
   replay?: boolean;
@@ -57,6 +59,8 @@ export interface SpecCardProps {
   onApprove?: (spec: TaskSpec | null) => Promise<void>;
   /** Shown while there is no spec yet. */
   pendingText: string;
+  /** The job is over without a spec: show pendingText without the loading state. */
+  pendingStopped?: boolean;
   /** Replays: the approval is part of the recording. */
   readOnlyNote?: string;
 }
@@ -326,10 +330,12 @@ export function SpecCard({
   awaiting,
   approved,
   autoApproved = false,
+  paused = false,
   edited,
   replay = false,
   onApprove,
   pendingText,
+  pendingStopped = false,
   readOnlyNote,
 }: SpecCardProps) {
   const [draft, setDraft] = useState<TaskSpec | null>(null);
@@ -370,19 +376,23 @@ export function SpecCard({
   }
 
   const question = clarifyingQuestion ?? spec?.clarifying_question ?? null;
+  const given = source === "given";
+  // "Approved" only when the run paused and someone approved; "Auto-approved" only for a spec
+  // Muse Wonder generated. A supplied spec used as it came gets no status chip: "Spec supplied"
+  // says what happened.
   const statusChip = approved ? (
-    autoApproved && !edited ? (
+    paused || edited ? (
+      <Chip tone="success" icon={<IconCheck size={12} strokeWidth={2.6} />}>
+        {edited ? "Approved with edits" : "Approved"}
+      </Chip>
+    ) : autoApproved && !given ? (
       <Chip
         tone="neutral"
         title="This run did not pause for anyone to review the spec before the program was written"
       >
         Auto-approved (not reviewed)
       </Chip>
-    ) : (
-      <Chip tone="success" icon={<IconCheck size={12} strokeWidth={2.6} />}>
-        {edited ? "Approved with edits" : "Approved"}
-      </Chip>
-    )
+    ) : null
   ) : sent ? (
     <Chip tone="accent" icon={<Spinner size={11} />}>
       Approving
@@ -396,8 +406,10 @@ export function SpecCard({
     <Chip
       tone="muted"
       title={
-        source === "given"
-          ? "The job came with this spec; Muse Wonder did not write it"
+        given
+          ? approved && !paused && !edited
+            ? "The job came with this spec and the run used it as supplied, without pausing for approval; Muse Wonder did not write it"
+            : "The job came with this spec; Muse Wonder did not write it"
           : mediaPath && mediaPath !== "none"
             ? `Muse Wonder saw the ${mediaPath}`
             : undefined
@@ -422,14 +434,18 @@ export function SpecCard({
         }
       />
       {!spec ? (
-        <div className="space-y-3 px-4 py-5 sm:px-5">
-          <p className="flex items-center gap-2 text-sm text-zinc-500">
-            <Spinner size={14} /> {pendingText}
-          </p>
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-4 w-1/2" />
-        </div>
+        pendingStopped ? (
+          <p className="px-4 py-5 text-sm text-zinc-500 sm:px-5">{pendingText}</p>
+        ) : (
+          <div className="space-y-3 px-4 py-5 sm:px-5">
+            <p className="flex items-center gap-2 text-sm text-zinc-500">
+              <Spinner size={14} /> {pendingText}
+            </p>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        )
       ) : draft ? (
         <div className="space-y-5 px-4 py-4 sm:px-5">
           <section>

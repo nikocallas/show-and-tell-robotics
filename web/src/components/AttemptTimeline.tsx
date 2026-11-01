@@ -8,6 +8,7 @@ import {
   attemptCounts,
   isVerified,
   pct,
+  repairStopNote,
   type AttemptState,
   type JobState,
 } from "../state";
@@ -165,6 +166,8 @@ export function AttemptTimeline({
   const verified = isVerified(state);
   const last = state.attempts[state.attempts.length - 1];
   const repairs = state.attempts.filter((a) => a.kind === "repair").length;
+  // Why fewer repairs ran than could have (the pipeline only logs it).
+  const repairNote = state.status === "failed" ? repairStopNote(state) : null;
 
   return (
     <Card>
@@ -261,10 +264,13 @@ export function AttemptTimeline({
                 </span>
               </div>
             ) : state.status === "failed" ? (
-              <p className="text-sm text-rose-700">
-                Not verified: {attemptCounts(last, state.nSeeds).passed}/{attemptCounts(last, state.nSeeds).total} scenes
-                pass after {repairs} repair{repairs === 1 ? "" : "s"}.
-              </p>
+              <>
+                <p className="text-sm text-rose-700">
+                  Not verified: {attemptCounts(last, state.nSeeds).passed}/{attemptCounts(last, state.nSeeds).total} scenes
+                  pass after {repairs} repair{repairs === 1 ? "" : "s"}.
+                </p>
+                {repairNote && <p className="mt-1 text-xs text-zinc-500">{repairNote}</p>}
+              </>
             ) : (
               <p className="text-sm text-rose-700">The job stopped with an error.</p>
             )}

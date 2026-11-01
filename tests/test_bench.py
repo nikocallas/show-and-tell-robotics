@@ -96,3 +96,24 @@ def test_sentence_repairs_and_own_check_gaps_are_shown() -> None:
     ]
     md = rb.results_markdown(results)
     assert '"no video" = the human demo video' in md and "without the SAM judge" in md
+
+
+def test_own_check_gaps_lists_any_difference_and_the_footnote_names_every_column() -> None:
+    results = {
+        "n_seeds": 20,
+        "tasks": {
+            "task01_size": {  # fewer passes on its own checks than on the reference checks
+                "video": {"attempts": [{"passed": 15, "total": 20}], "ref_final": [20, 20]}
+            },
+            "task02_color": {  # the same count: no line
+                "video": {"attempts": [{"passed": 20, "total": 20}], "ref_final": [20, 20]}
+            },
+        },
+    }
+    assert rb.own_check_gaps(results) == [
+        "- task01_size (video): 15/20 on its own checks, 20/20 on the reference checks."
+    ]
+    footnote = rb.results_markdown(SAMPLE).split("\n\n")[1]
+    assert footnote.endswith("Repairs and Time = the video condition.")
+    for column in ("First try", "Final", "Sentence only", "Judge agreement", "Cost $"):
+        assert f"{column} = " in footnote

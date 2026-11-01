@@ -1,6 +1,6 @@
 /** One test scene: video, ground-truth checks next to the SAM verdicts, and contact events. */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { MediaResolver } from "../hooks";
 import { kindLabel, objectLabel } from "../lib/format";
 import { seedAgreement, type AttemptState } from "../state";
@@ -20,6 +20,38 @@ const CAMERAS: { key: Camera; label: string; title: string }[] = [
 /** Checks a contact can break; in_bin failures are about where objects ended, not touches. */
 const CONTACT_KINDS = new Set(["untouched", "upright", "unmoved"]);
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), video[controls], [tabindex]:not([tabindex="-1"])';
+
+/** The dialog's keyboard-reachable elements in document order (visible ones, guards excluded). */
+function focusables(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+    (el) => !el.hasAttribute("data-focus-guard") && el.getClientRects().length > 0,
+  );
+}
+
+/**
+ * Invisible, empty tab stops at both ends of the dialog: tabbing onto one wraps focus to the other
+ * end, so the page behind the dialog (the replay controls included) stays out of keyboard reach.
+ */
+function FocusGuard({ panel, to }: { panel: RefObject<HTMLDivElement>; to: "first" | "last" }) {
+  return (
+    <span
+      tabIndex={0}
+      data-focus-guard=""
+      className="sr-only"
+      onFocus={() => {
+        const root = panel.current;
+        if (!root) return;
+        const items = focusables(root);
+        const target = to === "first" ? items[0] : items[items.length - 1];
+        if (target) target.focus();
+        else root.focus();
+      }}
+    />
+  );
+}
+
 export function SeedModal({
   attempt,
   seed,
@@ -28,6 +60,7 @@ export function SeedModal({
   onClose,
   onNavigate,
   noVideoNote,
+  judgeOff,
 }: {
   attempt: AttemptState;
   seed: number;
@@ -36,6 +69,8 @@ export function SeedModal({
   onClose: () => void;
   onNavigate: (seed: number) => void;
   noVideoNote?: string;
+  /** Why SAM 3.1 is not judging this job (state.judgeOffReason), when the data says. */
+  judgeOff?: string | null;
 }) {
   const result = attempt.results[seed];
   const panelRef = useRef<HTMLDivElement>(null);
@@ -61,7 +96,14 @@ export function SeedModal({
     panelRef.current?.focus();
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    // Focus that lands behind the dialog (tabbing in from the browser's address bar, say) comes back.
+    const onFocusIn = (e: FocusEvent) => {
+      const panel = panelRef.current;
+      if (panel && e.target instanceof Node && !panel.contains(e.target)) panel.focus();
+    };
+    document.addEventListener("focusin", onFocusIn);
     return () => {
+      document.removeEventListener("focusin", onFocusIn);
       document.body.style.overflow = prevOverflow;
       opener?.focus?.();
     };
@@ -69,6 +111,20 @@ export function SeedModal({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Tab") {
+        // Inside the dialog the focus guards wrap the tab order. From the panel itself (focused on
+        // open) or from anywhere outside it, Tab goes to the dialog's first or last element instead
+        // of the page behind it.
+        const panel = panelRef.current;
+        const active = document.activeElement;
+        if (!panel || (active instanceof Node && panel.contains(active) && active !== panel)) return;
+        e.preventDefault();
+        const items = focusables(panel);
+        const target = e.shiftKey ? items[items.length - 1] : items[0];
+        if (target) target.focus();
+        else panel.focus();
+        return;
+      }
       if (e.key === "Escape") onClose();
       else if (e.key === "ArrowLeft" && prev != null) onNavigate(prev);
       else if (e.key === "ArrowRight" && next != null) onNavigate(next);
@@ -99,6 +155,7 @@ export function SeedModal({
         tabIndex={-1}
         className="flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-pop focus:outline-none sm:max-w-5xl sm:rounded-2xl"
       >
+        <FocusGuard panel={panelRef} to="last" />
         {/* header */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-100 px-4 py-3 sm:px-5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -219,7 +276,11 @@ export function SeedModal({
               <p className="mt-2 text-xs text-zinc-500">
                 {ag
                   ? `SAM agrees on ${ag.agree} of ${ag.n} check${ag.n === 1 ? "" : "s"}${ag.undecided ? `; ${ag.undecided} undecided` : ""}.`
-                  : "No SAM verdict for this scene yet."}
+                  : judgeOff
+                    ? `No SAM 3.1 verdict for this scene: ${judgeOff}.`
+                    : attempt.status === "done" // attempt_done comes after the judge's last verdict
+                      ? "No SAM 3.1 verdict for this scene."
+                      : "No SAM verdict for this scene yet."}
               </p>
             </section>
 
@@ -257,6 +318,7 @@ export function SeedModal({
             </section>
           </div>
         </div>
+        <FocusGuard panel={panelRef} to="first" />
       </div>
     </div>
   );

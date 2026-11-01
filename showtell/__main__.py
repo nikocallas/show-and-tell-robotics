@@ -28,13 +28,20 @@ def smoke(
 
 @app.command("check-videos")
 def check_videos(
-    folder: Path = typer.Option(Path("bench/videos"), help="Folder with the demo videos"),
+    folder: Path | None = typer.Option(
+        None, help="Folder with the demo videos  [default: bench/videos in this repo]"
+    ),
 ) -> None:
     """Check the human demo videos (no API calls) and write a contact sheet for each."""
     from rich.table import Table
 
+    from showtell.config import ROOT
     from showtell.perception.video_check import check_folder
 
+    folder = folder or ROOT / "bench" / "videos"  # the benchmark's folder, from any directory
+    if not folder.is_dir():
+        console.print(f"[red]no folder {folder}[/]")
+        raise typer.Exit(code=1)
     sheets = settings.SHOWTELL_DATA_DIR / "video_check"
     results = check_folder(folder, sheet_dir=sheets)
     table = Table(title=f"Demo videos in {folder}")

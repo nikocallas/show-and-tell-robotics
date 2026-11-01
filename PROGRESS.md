@@ -16,26 +16,17 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    deploy of the demo-mode web app.
 5. **Voiceover + submission** (end of project).
 
-## Resume here (paused 2026-11-01 for usage limits)
+## Current state (2026-11-01)
 
-- **State:** commit 8f276ff builds (web) and passes all 467 tests. `web/public/demo/` (39 MB, not committed;
-  regenerate with `python -m showtell export-demo --job <id>`, labels are kept) holds the task-6 repair run
-  `20261101-063309-c15793` and the task-3 stand-in run `20261031-154240-8ca2da`; scanned clean of local paths.
-- **Second review, unfinished:** a live-mode regression run plus web and Python code reviews found 24 issues,
-  saved in `data/review_findings_2026-11-01.json`. The fixers were stopped mid-way; their unverified edits are
-  in `git stash` ("review fixes in progress 2026-11-01"). Inspect with `git stash show -p stash@{0}`, then
-  either apply and finish/verify, or drop it and fix from the findings file.
-- **Fix before exporting any video run:** `export_demo` writes the absolute local video path (with the user
-  name) into report.json/job.json for benchmark and CLI video jobs. The current bundle is not affected.
-- Other open findings: the replay does not show `report.demo_note` in "About this recording"; a spec supplied
-  with the job is labelled "Auto-approved (not reviewed)"; "stand-in" is inferred from the file name only;
-  `Stage.__exit__` calls `tag_cached` unguarded (a corrupt usage-log line would fail a stage); `check-videos`
-  does not warn on iPhone HDR (10-bit HLG) clips; `tests/test_video_check.py` writes into the real `cache/`;
-  in live mode on phones the Demo/Live switch covers a nav link.
-- **Then:** sync `docs/demo_script.md` with the final app (repair frames are now shown in the app, the recorded
-  run's chip reads "Auto-approved (not reviewed)", New task is hidden in demo mode, the stand-in is labelled),
-  deploy the demo to Vercel (CLI logged in; waits for your OK), and after filming: `check-videos` → `smoke` →
-  `bench` (video condition).
+- Everything below is committed. 493 tests pass; ruff, tsc and the web build pass.
+- Second review done: a live-mode regression run plus web and Python code reviews found 24 issues
+  (`data/review_findings_2026-11-01.json`), all fixed and tested. The two that mattered most: exporting a video
+  run could write the local video path into the public bundle (the export now copies the video into the bundle
+  and refuses any bundle text holding a local path), and the replay hid the export note (now shown from 0:00).
+  A spec supplied with a job now reads "Spec supplied", never "auto-approved".
+- Demo bundle `web/public/demo/` (39 MB, committed): the task-6 repair run and the task-3 stand-in run,
+  re-exported through the path guard; spot-checked in the production build.
+- Next: the Vercel deploy (CLI logged in; waits for your OK), then filming → `check-videos` → `smoke` → `bench`.
 
 ## Verified API facts (from https://dev.meta.ai/docs/*.md, fetched 2026-10-31)
 

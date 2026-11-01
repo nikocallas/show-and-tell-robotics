@@ -110,20 +110,43 @@ def log_usage(
     return rec
 
 
-def read_log(path: Path | None = None) -> list[dict[str, Any]]:
-    """All records in the usage log (missing file -> []; malformed lines are skipped)."""
-    path = Path(path or settings.usage_log)
-    if not path.exists():
-        return []
+def _parse_lines(raw: bytes) -> list[dict[str, Any]]:
+    """Records in usage-log bytes. Each line is decoded on its own, so a line that is not UTF-8
+    JSON (a torn append can split a multi-byte character) skips only itself."""
     out: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in raw.splitlines():
         try:
-            rec = json.loads(line)
-        except ValueError:
+            rec = json.loads(line.decode("utf-8"))
+        except ValueError:  # UnicodeDecodeError and JSONDecodeError are both ValueErrors
             continue
         if isinstance(rec, dict):
             out.append(rec)
     return out
+
+
+def _ts(rec: Mapping[str, Any]) -> float:
+    """A record's timestamp; 0.0 when it is missing or not a number."""
+    try:
+        return float(rec.get("ts") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def read_log(path: Path | None = None) -> list[dict[str, Any]]:
+    """All records in the usage log (missing file -> []; malformed lines are skipped)."""
+    try:
+        return _parse_lines(Path(path or settings.usage_log).read_bytes())
+    except FileNotFoundError:
+        return []
+
+
+def log_size(path: Path | None = None) -> int:
+    """The usage log's size in bytes (0 while it does not exist): pass it to `tag_cached` as
+    `offset` to look only at the calls logged after this moment."""
+    try:
+        return Path(path or settings.usage_log).stat().st_size
+    except OSError:
+        return 0
 
 
 @dataclass
@@ -197,13 +220,23 @@ class UsageSummary:
         return t
 
 
-def tag_cached(tag: str, *, since: float | None = None, path: Path | None = None) -> bool | None:
-    """True when every logged call with exactly this tag (at/after ``since``) was served from the
-    local cache, False when any was billed, None when there was no such call."""
+def tag_cached(
+    tag: str, *, offset: int = 0, since: float | None = None, path: Path | None = None
+) -> bool | None:
+    """True when every logged call with exactly this tag was served from the local cache, False
+    when any was billed, None when there was no such call. Only records from byte ``offset`` on
+    (a `log_size` taken before the calls) and at/after ``since`` (epoch seconds) count; with an
+    offset only what was appended since is read, however long the shared log has grown."""
+    try:
+        with Path(path or settings.usage_log).open("rb") as f:
+            f.seek(max(int(offset), 0))
+            raw = f.read()
+    except FileNotFoundError:
+        return None
     records = [
         rec
-        for rec in read_log(path)
-        if rec.get("tag") == tag and (since is None or float(rec.get("ts", 0.0) or 0.0) >= since)
+        for rec in _parse_lines(raw)
+        if rec.get("tag") == tag and (since is None or _ts(rec) >= since)
     ]
     if not records:
         return None
@@ -217,7 +250,7 @@ def summarize(
     and/or whose tag starts with ``tag_prefix``."""
     s = UsageSummary()
     for rec in read_log(path):
-        if since is not None and float(rec.get("ts", 0.0) or 0.0) < since:
+        if since is not None and _ts(rec) < since:
             continue
         tag = str(rec.get("tag", "") or "")
         if tag_prefix is not None and not tag.startswith(tag_prefix):

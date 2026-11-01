@@ -27,9 +27,11 @@ function RunCard({ run }: { run: DemoRun }) {
   const wall = entry.wall_seconds ?? r?.wall_seconds;
   const taskId = entry.task_id ?? r?.task_id;
   const useVideo = entry.use_video ?? r?.use_video;
-  const standIn = Boolean(useVideo && isStandInVideo(r?.video));
+  const givenSpec = r?.spec_source === "given";
+  const standIn = Boolean(useVideo && !givenSpec && isStandInVideo(r?.video));
   const story = runStory(r);
   const agreement = r?.agreement;
+  const note = entry.note ?? r?.demo_note ?? null;
 
   return (
     <Link
@@ -42,14 +44,20 @@ function RunCard({ run }: { run: DemoRun }) {
         ) : (
           <StatusChip status={status} />
         )}
-        {useVideo != null &&
+        {givenSpec ? (
+          <Chip tone="muted" title="The job came with its spec; Muse Wonder did not write it">
+            Spec supplied
+          </Chip>
+        ) : (
+          useVideo != null &&
           (standIn ? (
-            <Chip tone="warning" title="The demonstration is a stand-in clip, not a recording of a person">
+            <Chip tone="warning" title="The demonstration file is named as a stand-in clip (standin_…), not as a recording of a person">
               Stand-in video
             </Chip>
           ) : (
             <Chip tone="muted">{useVideo ? "Video + sentence" : "Sentence only"}</Chip>
-          ))}
+          ))
+        )}
         {IS_FIXTURE && <Chip tone="warning">{FIXTURE_LABEL}</Chip>}
         {taskId && <span className="font-mono text-[11px] text-zinc-400">{taskId}</span>}
       </div>
@@ -57,7 +65,7 @@ function RunCard({ run }: { run: DemoRun }) {
         {entry.title && !rules ? entry.title : rules ? `“${rules}”` : entry.id}
       </h2>
       {entry.title && rules && <p className="mt-1 text-sm text-zinc-500">{entry.title}</p>}
-      {entry.note && <p className="mt-1 text-xs text-zinc-500">{entry.note}</p>}
+      {note && <p className="mt-1 text-xs text-zinc-500">{note}</p>}
       {story && <p className="mt-2 text-sm text-zinc-700">{story}</p>}
       <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-500">
         {firstTry && (

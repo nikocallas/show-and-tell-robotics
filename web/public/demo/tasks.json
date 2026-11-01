@@ -1,0 +1,87 @@
+[
+  {
+    "id": "task01_size",
+    "index": 1,
+    "rules": "Sort by size: big ones in the left bowl, small ones in the right bowl.",
+    "objects": [
+      "red_cube_large",
+      "blue_cube_large",
+      "red_cube_small",
+      "green_cube_small"
+    ],
+    "demo": "Move both big blocks into the left bowl and both small blocks into the right bowl.",
+    "video": "task01_size.mp4",
+    "has_video": false
+  },
+  {
+    "id": "task02_color",
+    "index": 2,
+    "rules": "Sort by color, one bowl per color.",
+    "objects": [
+      "red_cube_large",
+      "red_cube_small",
+      "blue_cube_large",
+      "green_cube_small"
+    ],
+    "demo": "Red blocks into the left bowl, the blue block into the middle bowl, the green block into the right bowl.",
+    "video": "task02_color.mp4",
+    "has_video": false
+  },
+  {
+    "id": "task03_size_glass",
+    "index": 3,
+    "rules": "Sort by size, and don't touch the glass.",
+    "objects": [
+      "red_cube_large",
+      "blue_cube_large",
+      "red_cube_small",
+      "green_cube_small",
+      "clear_glass_large"
+    ],
+    "demo": "Big blocks into the left bowl, small blocks into the right bowl; carry them around the tall glass without touching it.",
+    "video": "task03_size_glass.mp4",
+    "has_video": false
+  },
+  {
+    "id": "task04_clear",
+    "index": 4,
+    "rules": "Clear everything into the middle bowl, but leave the glass alone.",
+    "objects": [
+      "red_cube_large",
+      "blue_cube_small",
+      "yellow_cylinder_large",
+      "clear_glass_large"
+    ],
+    "demo": "Every block and the yellow cylinder go into the middle bowl; the glass stays where it is.",
+    "video": "task04_clear.mp4",
+    "has_video": false
+  },
+  {
+    "id": "task05_shape",
+    "index": 5,
+    "rules": "Cylinders in the left bowl, cubes in the right bowl.",
+    "objects": [
+      "yellow_cylinder_large",
+      "yellow_cylinder_large_2",
+      "red_cube_small",
+      "blue_cube_large"
+    ],
+    "demo": "Both yellow cylinders into the left bowl, both blocks into the right bowl.",
+    "video": "task05_shape.mp4",
+    "has_video": false
+  },
+  {
+    "id": "task06_color_exc",
+    "index": 6,
+    "rules": "Sort by color, but blue things stay where they are.",
+    "objects": [
+      "red_cube_large",
+      "green_cube_small",
+      "blue_cube_large",
+      "blue_cube_small"
+    ],
+    "demo": "The red block into the left bowl, the green block into the right bowl; both blue blocks stay put.",
+    "video": "task06_color_exc.mp4",
+    "has_video": false
+  }
+]

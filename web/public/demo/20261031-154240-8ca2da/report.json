@@ -1,0 +1,2858 @@
+{
+  "job_id": "20261031-154240-8ca2da",
+  "created_at": 1793479360.320408,
+  "rules": "Sort by size, and don't touch the glass.",
+  "use_video": true,
+  "task_id": "task03_size_glass",
+  "object_ids": [
+    "red_cube_large",
+    "blue_cube_large",
+    "red_cube_small",
+    "green_cube_small",
+    "clear_glass_large"
+  ],
+  "video": "media/20261031-154240-8ca2da/input/standin_task03_overhead.mp4",
+  "spec": {
+    "rules": [
+      {
+        "select": {
+          "size": "large",
+          "color": null,
+          "shape": null,
+          "fragile": false
+        },
+        "place_in": "left_bin",
+        "leave": false
+      },
+      {
+        "select": {
+          "size": "small",
+          "color": null,
+          "shape": null,
+          "fragile": false
+        },
+        "place_in": "right_bin",
+        "leave": false
+      },
+      {
+        "select": {
+          "size": null,
+          "color": null,
+          "shape": "glass",
+          "fragile": null
+        },
+        "place_in": null,
+        "leave": true
+      }
+    ],
+    "checks": [
+      {
+        "id": "large_in_left_bin",
+        "kind": "in_bin",
+        "select": {
+          "size": "large",
+          "color": null,
+          "shape": null,
+          "fragile": false
+        },
+        "bin": "left_bin",
+        "text": "All large non-fragile objects are in the left bin."
+      },
+      {
+        "id": "small_in_right_bin",
+        "kind": "in_bin",
+        "select": {
+          "size": "small",
+          "color": null,
+          "shape": null,
+          "fragile": false
+        },
+        "bin": "right_bin",
+        "text": "All small non-fragile objects are in the right bin."
+      },
+      {
+        "id": "glass_untouched",
+        "kind": "untouched",
+        "select": {
+          "size": null,
+          "color": null,
+          "shape": "glass",
+          "fragile": null
+        },
+        "bin": null,
+        "text": "The glass has not been touched."
+      },
+      {
+        "id": "glass_upright",
+        "kind": "upright",
+        "select": {
+          "size": null,
+          "color": null,
+          "shape": "glass",
+          "fragile": null
+        },
+        "bin": null,
+        "text": "The glass remains upright on the table."
+      }
+    ],
+    "clarifying_question": null,
+    "rationale": "The video shows the large red and blue cubes placed in the left bin and the small red and green cubes placed in the right bin, while the clear glass was left alone. The sentence confirms sorting by size and not touching the glass, so large non-fragile objects go left, small non-fragile objects go right, and the glass is left untouched."
+  },
+  "spec_source": "video",
+  "media_path": "video",
+  "track_summary": {
+    "objects": [
+      {
+        "track_id": "red cube#1",
+        "concept": "red cube",
+        "attrs": {
+          "size": "large",
+          "color": "red",
+          "shape": "cube",
+          "fragile": false
+        },
+        "moved": true,
+        "start_px": [
+          254.0,
+          489.0
+        ],
+        "end_px": [
+          265.5,
+          202.5
+        ],
+        "end_bin": "left_bin",
+        "move_order": 0,
+        "first_move_frame": 61
+      },
+      {
+        "track_id": "blue cube#0",
+        "concept": "blue cube",
+        "attrs": {
+          "size": "large",
+          "color": "blue",
+          "shape": "cube",
+          "fragile": false
+        },
+        "moved": true,
+        "start_px": [
+          707.0,
+          427.0
+        ],
+        "end_px": [
+          332.0,
+          268.5
+        ],
+        "end_bin": "middle_bin",
+        "move_order": 1,
+        "first_move_frame": 161
+      },
+      {
+        "track_id": "red cube#0",
+        "concept": "red cube",
+        "attrs": {
+          "size": "small",
+          "color": "red",
+          "shape": "cube",
+          "fragile": false
+        },
+        "moved": true,
+        "start_px": [
+          621.0,
+          495.5
+        ],
+        "end_px": [
+          691.0,
+          206.0
+        ],
+        "end_bin": "right_bin",
+        "move_order": 2,
+        "first_move_frame": 290
+      },
+      {
+        "track_id": "green cube#0",
+        "concept": "green cube",
+        "attrs": {
+          "size": "small",
+          "color": "green",
+          "shape": "cube",
+          "fragile": false
+        },
+        "moved": true,
+        "start_px": [
+          408.5,
+          477.5
+        ],
+        "end_px": [
+          691.5,
+          270.0
+        ],
+        "end_bin": "right_bin",
+        "move_order": 3,
+        "first_move_frame": 408
+      }
+    ],
+    "bins": [
+      "left_bin",
+      "middle_bin",
+      "right_bin"
+    ],
+    "fps": 10.0,
+    "frames": 495,
+    "width": 960,
+    "height": 720,
+    "notes": [
+      "found 0 bowl(s), need 3: bins assigned by frame thirds of x (a bowl is named by its third; a moved object outside every bowl gets its end third)",
+      "dropped blue cube#1: an extra static 'blue cube' track 8x the median object box (a bowl or the background)",
+      "dropped green cube#1: an extra static 'green cube' track 10x the median object box (a bowl or the background)",
+      "'clear glass': SAM tracked 0, discovery counted 1",
+      "size from box area (same color and shape): red cube#0 small, red cube#1 large"
+    ]
+  },
+  "attempts": [
+    {
+      "n": 0,
+      "kind": "initial",
+      "program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(size=\"large\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"left_bin\", avoid=glasses)\n    for obj in scene.objects(size=\"small\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"right_bin\", avoid=glasses)\n",
+      "notes": "Large non-fragile objects are placed in the left bin and small non-fragile objects in the right bin. The glass is registered for avoidance and never picked, so it remains untouched and upright.",
+      "diagnosis": null,
+      "passed": 20,
+      "total": 20,
+      "seeds": [
+        {
+          "seed": 3000,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3000/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3000/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3000/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3000/thumb.jpg"
+          },
+          "sim_seconds": 43.94,
+          "touch_events": [
+            {
+              "t": 5.444,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 11.914,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 14.898,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 17.692,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 20.98,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 27.304,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 32.818,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 38.608,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3001,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3001/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3001/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3001/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3001/thumb.jpg"
+          },
+          "sim_seconds": 49.43,
+          "touch_events": [
+            {
+              "t": 5.458,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 11.438,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 17.37,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 23.142,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 29.396,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 31.938,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 38.428,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 44.206,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3002,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3002/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3002/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3002/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3002/thumb.jpg"
+          },
+          "sim_seconds": 43.71,
+          "touch_events": [
+            {
+              "t": 4.958,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 8.362,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 15.1,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 20.552,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 26.624,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 32.166,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 35.484,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 38.486,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3003,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3003/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3003/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3003/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3003/thumb.jpg"
+          },
+          "sim_seconds": 38.73,
+          "touch_events": [
+            {
+              "t": 4.798,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 7.486,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 11.234,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 13.574,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 16.722,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 22.64,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 27.868,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 33.396,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3004,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3004/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3004/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3004/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3004/thumb.jpg"
+          },
+          "sim_seconds": 47.26,
+          "touch_events": [
+            {
+              "t": 4.706,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 11.35,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): lifting"
+            },
+            {
+              "t": 15.942,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 22.056,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 28.368,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 30.734,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 36.476,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 42.034,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3005,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3005/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3005/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3005/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3005/thumb.jpg"
+          },
+          "sim_seconds": 41.85,
+          "touch_events": [
+            {
+              "t": 4.79,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 7.438,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 10.642,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 13.602,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 19.976,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 25.17,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 30.716,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 36.52,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3006,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3006/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3006/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3006/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3006/thumb.jpg"
+          },
+          "sim_seconds": 43.39,
+          "touch_events": [
+            {
+              "t": 4.416,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 8.144,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 12.796,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 17.674,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 24.026,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 27.06,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 32.558,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 38.056,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3007,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3007/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3007/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3007/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3007/thumb.jpg"
+          },
+          "sim_seconds": 42.02,
+          "touch_events": [
+            {
+              "t": 4.636,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 9.65,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): lifting"
+            },
+            {
+              "t": 14.082,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 19.89,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 25.744,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 31.31,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 34.16,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 36.79,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3008,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3008/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3008/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3008/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3008/thumb.jpg"
+          },
+          "sim_seconds": 43.29,
+          "touch_events": [
+            {
+              "t": 5.51,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 12.458,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): lifting"
+            },
+            {
+              "t": 17.302,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 23.634,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 29.668,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 32.244,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 35.532,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 38.064,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3009,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3009/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3009/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3009/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3009/thumb.jpg"
+          },
+          "sim_seconds": 43.25,
+          "touch_events": [
+            {
+              "t": 4.962,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 10.994,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 14.184,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 17.266,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 20.924,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 26.704,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 32.308,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 37.918,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3010,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3010/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3010/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3010/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3010/thumb.jpg"
+          },
+          "sim_seconds": 42.17,
+          "touch_events": [
+            {
+              "t": 4.538,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 8.006,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 11.044,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 13.944,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 20.292,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 25.452,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 31.18,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 36.838,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3011,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3011/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3011/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3011/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3011/thumb.jpg"
+          },
+          "sim_seconds": 47.62,
+          "touch_events": [
+            {
+              "t": 4.736,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 11.336,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 14.742,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 19.358,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 25.36,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 30.23,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 36.448,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 42.388,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3012,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3012/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3012/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3012/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3012/thumb.jpg"
+          },
+          "sim_seconds": 37.83,
+          "touch_events": [
+            {
+              "t": 4.22,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 8.08,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): lifting"
+            },
+            {
+              "t": 9.894,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 12.756,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 16.01,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 22.12,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 27.31,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 32.5,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3013,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3013/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3013/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3013/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3013/thumb.jpg"
+          },
+          "sim_seconds": 41.86,
+          "touch_events": [
+            {
+              "t": 5.024,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 11.35,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): lifting"
+            },
+            {
+              "t": 13.3,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 16.336,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 23.3,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 26.566,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 31.358,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 36.528,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3014,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3014/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3014/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3014/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3014/thumb.jpg"
+          },
+          "sim_seconds": 40.89,
+          "touch_events": [
+            {
+              "t": 4.782,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 7.654,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 10.592,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 12.904,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 19.172,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 24.946,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 29.864,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 35.464,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3015,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3015/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3015/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3015/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3015/thumb.jpg"
+          },
+          "sim_seconds": 46.84,
+          "touch_events": [
+            {
+              "t": 4.52,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 8.322,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): lifting"
+            },
+            {
+              "t": 14.15,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 20.37,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 24.162,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 30.06,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 35.65,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 41.506,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3016,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3016/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3016/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3016/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3016/thumb.jpg"
+          },
+          "sim_seconds": 44.37,
+          "touch_events": [
+            {
+              "t": 4.526,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 8.042,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 14.216,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 19.95,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 26.116,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 29.046,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 33.96,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 39.148,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3017,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3017/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3017/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3017/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3017/thumb.jpg"
+          },
+          "sim_seconds": 49.99,
+          "touch_events": [
+            {
+              "t": 4.414,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 10.766,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 16.102,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 22.106,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 27.668,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 33.47,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 39.532,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 44.764,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3018,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3018/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3018/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3018/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3018/thumb.jpg"
+          },
+          "sim_seconds": 44.48,
+          "touch_events": [
+            {
+              "t": 4.842,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 11.544,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 17.15,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 22.56,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 27.946,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 33.75,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 36.926,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 39.254,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        },
+        {
+          "seed": 3019,
+          "passed": true,
+          "checks": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin",
+              "objects": [
+                "red_cube_large",
+                "blue_cube_large"
+              ]
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin",
+              "objects": [
+                "red_cube_small",
+                "green_cube_small"
+              ]
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "nothing touched them",
+              "objects": [
+                "clear_glass_large"
+              ]
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright",
+              "objects": [
+                "clear_glass_large"
+              ]
+            }
+          ],
+          "error": null,
+          "videos": {
+            "full": "media/20261031-154240-8ca2da/attempts/0/seed_3019/full.mp4",
+            "overhead": "media/20261031-154240-8ca2da/attempts/0/seed_3019/judge.mp4",
+            "judge_angle": "media/20261031-154240-8ca2da/attempts/0/seed_3019/judge_angle.mp4",
+            "thumb": "media/20261031-154240-8ca2da/attempts/0/seed_3019/thumb.jpg"
+          },
+          "sim_seconds": 47.4,
+          "touch_events": [
+            {
+              "t": 4.93,
+              "obj": "red_cube_large",
+              "by": "robot",
+              "during": "pick(red_cube_large): descending"
+            },
+            {
+              "t": 10.508,
+              "obj": "red_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing red_cube_large"
+            },
+            {
+              "t": 16.556,
+              "obj": "blue_cube_large",
+              "by": "robot",
+              "during": "pick(blue_cube_large): descending"
+            },
+            {
+              "t": 22.444,
+              "obj": "blue_cube_large",
+              "by": "left_bin",
+              "during": "place(left_bin): releasing blue_cube_large"
+            },
+            {
+              "t": 28.962,
+              "obj": "red_cube_small",
+              "by": "robot",
+              "during": "pick(red_cube_small): grasping"
+            },
+            {
+              "t": 31.676,
+              "obj": "red_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing red_cube_small"
+            },
+            {
+              "t": 37.028,
+              "obj": "green_cube_small",
+              "by": "robot",
+              "during": "pick(green_cube_small): grasping"
+            },
+            {
+              "t": 42.178,
+              "obj": "green_cube_small",
+              "by": "right_bin",
+              "during": "place(right_bin): releasing green_cube_small"
+            }
+          ],
+          "sam": [
+            {
+              "check_id": "large_in_left_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in left_bin"
+            },
+            {
+              "check_id": "small_in_right_bin",
+              "kind": "in_bin",
+              "passed": true,
+              "detail": "all in right_bin"
+            },
+            {
+              "check_id": "glass_untouched",
+              "kind": "untouched",
+              "passed": true,
+              "detail": "none moved"
+            },
+            {
+              "check_id": "glass_upright",
+              "kind": "upright",
+              "passed": true,
+              "detail": "all upright"
+            }
+          ]
+        }
+      ],
+      "agreement": {
+        "agree": 80,
+        "n": 80,
+        "undecided": 0,
+        "by_kind": {
+          "in_bin": {
+            "agree": 40,
+            "n": 40
+          },
+          "untouched": {
+            "agree": 20,
+            "n": 20
+          },
+          "upright": {
+            "agree": 20,
+            "n": 20
+          }
+        }
+      },
+      "wall_seconds": 96.5
+    }
+  ],
+  "status": "verified",
+  "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(size=\"large\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"left_bin\", avoid=glasses)\n    for obj in scene.objects(size=\"small\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"right_bin\", avoid=glasses)\n",
+  "final_passed": 20,
+  "final_total": 20,
+  "agreement": {
+    "agree": 80,
+    "n": 80,
+    "undecided": 0,
+    "by_kind": {
+      "in_bin": {
+        "agree": 40,
+        "n": 40
+      },
+      "untouched": {
+        "agree": 20,
+        "n": 20
+      },
+      "upright": {
+        "agree": 20,
+        "n": 20
+      }
+    }
+  },
+  "cost": {
+    "usd": 1.9186,
+    "wonder_usd": 0.3246,
+    "sam_usd": 1.594,
+    "calls": 109
+  },
+  "wall_seconds": 199.5,
+  "error": null,
+  "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007,
+    3008,
+    3009,
+    3010,
+    3011,
+    3012,
+    3013,
+    3014,
+    3015,
+    3016,
+    3017,
+    3018,
+    3019
+  ],
+  "demo_note": "Stand-in video: a top-down render of the robot doing this task, not a human demonstration (the human video is not recorded yet). Run from the web app; the spec was reviewed and approved in the spec card. Object discovery and SAM tracking of the clip came from the local response cache of an earlier run on the same clip; the spec, the program, the simulation and the SAM 3.1 judge ran fresh."
+}

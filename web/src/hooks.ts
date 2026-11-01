@@ -80,6 +80,8 @@ export interface LiveJob {
 }
 
 const FLUSH_MS = 60;
+/** repair_done refreshes within this window share one request (a reconnect replays them all). */
+const REFRESH_DEBOUNCE_MS = 300;
 
 export function useLiveJob(id: string): LiveJob {
   const [snapshot, setSnapshot] = useState<ApiJobResponse | null>(null);
@@ -88,13 +90,20 @@ export function useLiveJob(id: string): LiveJob {
   const [stream, setStream] = useState<StreamStatus>("connecting");
   const [nonce, setNonce] = useState(0);
   const seen = useRef<Set<string>>(new Set());
+  // Snapshot requests can finish out of order: an answer older than the one shown is dropped.
+  const issued = useRef(0);
+  const applied = useRef(0);
 
   const refresh = useCallback(async () => {
+    const req = ++issued.current;
     try {
       const snap = await getJob(id);
+      if (req <= applied.current) return;
+      applied.current = req;
       setSnapshot(snap);
       setError(null);
     } catch (e) {
+      if (req <= applied.current) return;
       setError(e instanceof ApiError ? e : new ApiError(0, String(e)));
     }
   }, [id]);
@@ -104,16 +113,22 @@ export function useLiveJob(id: string): LiveJob {
     setError(null);
     setEvents([]);
     seen.current = new Set();
+    applied.current = issued.current; // answers to requests made before this (another job) are dropped
     void refresh();
 
     // Batch bursts (the server replays every past event on connect) into few renders.
     let buffer: PipelineEvent[] = [];
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const flush = () => {
       timer = null;
       const batch = buffer;
       buffer = [];
       if (batch.length) setEvents((prev) => [...prev, ...batch]);
+    };
+    const cancelRefresh = () => {
+      if (refreshTimer != null) clearTimeout(refreshTimer);
+      refreshTimer = null;
     };
     let stop: () => void = () => undefined;
     stop = subscribeEvents(
@@ -126,9 +141,14 @@ export function useLiveJob(id: string): LiveJob {
         if (timer == null) timer = setTimeout(flush, FLUSH_MS);
         if (ev.type === "job_done") {
           stop();
+          cancelRefresh();
           void refresh(); // final snapshot carries the report and media URLs
-        } else if (ev.type === "repair_done") {
-          void refresh(); // the snapshot lists the frames the repair call was sent
+        } else if (ev.type === "repair_done" && refreshTimer == null) {
+          // The snapshot lists the frames the repair call was sent.
+          refreshTimer = setTimeout(() => {
+            refreshTimer = null;
+            void refresh();
+          }, REFRESH_DEBOUNCE_MS);
         }
       },
       setStream,
@@ -136,6 +156,7 @@ export function useLiveJob(id: string): LiveJob {
     return () => {
       stop();
       if (timer != null) clearTimeout(timer);
+      cancelRefresh();
       buffer = [];
     };
   }, [id, nonce, refresh]);
@@ -264,6 +285,10 @@ export function useReplayJob(id: string): ReplayJob {
           s = completeJob(s, normalizeStatus(bundle.report.status, "failed"), bundle.report);
         }
       }
+      // export-demo writes the provenance note into report.json only: the report that job_done
+      // carries predates the export.
+      const note = bundle.report?.demo_note;
+      if (note && s.report && !s.report.demo_note) s = { ...s, report: { ...s.report, demo_note: note } };
       // Shown under the repair they fed, so they appear when the replay reaches that repair.
       return { ...s, failureFrames: bundle.failureFrames };
     },

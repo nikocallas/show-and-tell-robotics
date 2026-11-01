@@ -17,6 +17,13 @@ const isObj = (v: unknown): v is Json => v !== null && typeof v === "object" && 
 const finite = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 
+/** A TaskSpec shape the pages can render: rules and checks are lists of objects. */
+function taskSpec(v: unknown): TaskSpec | null {
+  if (!isObj(v) || !Array.isArray(v.rules) || !Array.isArray(v.checks)) return null;
+  if (!v.rules.every(isObj) || !v.checks.every(isObj)) return null;
+  return v as unknown as TaskSpec;
+}
+
 /** run_bench._rate: "no video" / "error" from the status, else the [passed, total] pair. */
 function rate(entry: Json | null, key: "ref_first" | "ref_final"): PassValue {
   if (!entry) return null;
@@ -51,7 +58,7 @@ function condition(entry: Json | null): BenchCondition | null {
     cost_usd: finite(entry.cost_usd),
     wall_s: finite(entry.wall_s),
     agreement_pct: finite(entry.agreement_pct),
-    spec: isObj(entry.spec) ? (entry.spec as unknown as TaskSpec) : null,
+    spec: taskSpec(entry.spec),
     final_program: typeof entry.final_program === "string" ? entry.final_program : null,
   };
 }
@@ -109,6 +116,7 @@ function ruleKey(r: Rule): string {
 /** Same rules and checks (selectors, bins, kinds, ids); wording and rationale are ignored. */
 export function sameSpec(a: TaskSpec | null | undefined, b: TaskSpec | null | undefined): boolean {
   if (!a || !b) return false;
+  if (![a.rules, a.checks, b.rules, b.checks].every(Array.isArray)) return false;
   const checks = (s: TaskSpec) =>
     s.checks.map((c) => JSON.stringify([c.id, c.kind, selectorKey(c.select), c.kind === "in_bin" ? (c.bin ?? null) : null]));
   return (

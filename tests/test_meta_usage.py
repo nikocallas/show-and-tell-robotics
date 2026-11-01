@@ -115,3 +115,37 @@ def test_tag_cached_says_whether_a_stage_was_served_from_the_cache() -> None:
     assert usage.tag_cached("job:repair1") is None  # no such call
     assert usage.tag_cached("job:spec", since=time.time() + 60) is None
     assert usage.tag_cached("job:spe") is None and usage.tag_cached("job:spec", since=t0) is True
+
+
+def test_a_line_that_is_not_utf8_skips_only_itself() -> None:
+    """A torn append (Ctrl-C, a full disk) can cut a multi-byte character in two: the reader
+    skips that line and keeps every other record."""
+    log_usage(kind="wonder", tag="job:spec", cached_locally=True, input_tokens=10)
+    with settings.usage_log.open("ab") as f:
+        f.write(b'{"ts": 1.0, "kind": "sam", "tag": "job:track", "concept": "r\xc3\n')
+    log_usage(kind="sam", tag="job:track", video_frames=50)
+    assert [r["kind"] for r in usage.read_log()] == ["wonder", "sam"]
+    assert summarize().n_calls == 2
+    assert usage.tag_cached("job:spec") is True
+
+
+def test_bad_timestamps_count_as_zero() -> None:
+    settings.usage_log.parent.mkdir(parents=True)
+    settings.usage_log.write_text(
+        '{"ts": "soon", "kind": "wonder", "tag": "a"}\n{"ts": null, "kind": "sam", "tag": "a"}\n'
+    )
+    assert summarize(since=1.0).n_calls == 0  # neither counts as recent; nothing raises
+    assert summarize().n_calls == 2
+    assert usage.tag_cached("a", since=1.0) is None
+
+
+def test_tag_cached_reads_only_what_was_logged_after_the_offset() -> None:
+    assert usage.log_size() == 0 and usage.tag_cached("job:spec") is None  # no log yet
+    log_usage(kind="wonder", tag="job:spec", input_tokens=10)  # billed, before the stage
+    start = usage.log_size()
+    assert start == settings.usage_log.stat().st_size > 0
+    log_usage(kind="wonder", tag="job:spec", cached_locally=True, input_tokens=10)
+    assert usage.tag_cached("job:spec") is False  # the whole log: one call was billed
+    assert usage.tag_cached("job:spec", offset=start) is True  # only the stage's own call
+    assert usage.tag_cached("job:spec", offset=usage.log_size()) is None  # nothing after
+    assert usage.tag_cached("job:spec", offset=start + 3) is None  # mid-line: that line skips
