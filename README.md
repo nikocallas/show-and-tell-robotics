@@ -59,11 +59,11 @@ flowchart TB
         SIM[MuJoCo x 20 seeds<br/>Franka Panda] --> GT[Ground-truth checks] --> REP{All pass?}
         SIM --> S2[SAM 3.1 judge<br/>on rendered clips]
         S2 -. agreement .-> REP
-        REP -- yes --> OUT[Verified program<br/>+ report]
         REP -- no --> FIX[Muse Wonder repair<br/>diagnosis + patch]
         FIX -->|"sandbox, then all 20 again"| SIM
     end
     watch --> spec --> verify
+    verify -->|"all pass: 20/20"| OUT[Verified program + report]
 ```
 
 ## Meta models used
