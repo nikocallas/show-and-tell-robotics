@@ -19,7 +19,7 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 ## Current state (2026-11-03)
 
 - Code public at https://github.com/nikocallas/show-and-tell-robotics (pushed 2026-11-03). The web app links
-  to it (footer, How it works); the hosted demo shows those links after its next deploy.
+  to it (footer, How it works); the hosted demo was redeployed with those links on 2026-11-03.
 - Everything below is committed. 494 tests pass; ruff, tsc and the web build pass.
 - Second review done: a live-mode regression run plus web and Python code reviews found 24 issues
   (`data/review_findings_2026-11-01.json`), all fixed and tested. The two that mattered most: exporting a video
