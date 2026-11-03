@@ -11,11 +11,15 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    a yellow cylinder (marker cap / glue stick), a tall glass, 3 bowls in a row at the far edge.
    Files: `smoke.mp4` (5 s, a hand moving one block), `task01_size.mp4`, `task02_color.mp4`, `task03_size_glass.mp4`,
    `task04_clear.mp4`, `task05_shape.mp4`, `task06_color_exc.mp4`. Blocks Phase 3 acceptance and the benchmark.
-3. **Hackathon rules**: confirm submission fields, video length limit and repo visibility.
+3. **Hackathon rules**: confirm submission fields, video length limit and the deadline. An unofficial listing
+   (Internshala) says submissions close 5 Nov 2026, 6:30 AM IST (4 Nov, 7:00 PM CST); the official rules were not
+   found online. Repo visibility: public (your call, 2026-11-03).
 4. ~~**Vercel**~~ — logged in and deployed on 2026-11-01: https://show-and-tell-robotics.vercel.app
 5. **Voiceover + submission** (end of project).
 
-## Current state (2026-11-01)
+## Current state (2026-11-03)
+
+- Code public at https://github.com/nikocallas/show-and-tell-robotics (pushed 2026-11-03).
 
 - Everything below is committed. 493 tests pass; ruff, tsc and the web build pass.
 - Second review done: a live-mode regression run plus web and Python code reviews found 24 issues

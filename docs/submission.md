@@ -286,7 +286,7 @@ On our development machine, each 20-scene attempt of the task-6 run was simulate
 
 ## Links
 
-- Repository: [pending: URL and visibility, per the hackathon rules]
+- Repository: <https://github.com/nikocallas/show-and-tell-robotics> (public)
 - Demo video: [pending: recording, see `docs/demo_script.md`]
 - Hosted demo: <https://show-and-tell-robotics.vercel.app> (demo mode: replays the two recorded runs, no backend)
 
