@@ -1,7 +1,7 @@
 [project]
 name = "showtell"
 version = "0.1.0"
-description = "Show & Tell Robotics: show a robot a task once, state the rules, get a program proven in simulation."
+description = "Show & Tell Robotics: show a robot a task once, state the rules, get a program verified on 20 randomized scenes in simulation."
 requires-python = ">=3.11"
 dependencies = [
     "mujoco>=3.2",

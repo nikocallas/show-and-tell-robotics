@@ -1,6 +1,6 @@
 # Show & Tell Robotics
 
-Hackathon write-up · Meta Global AI Developer Hackathon, Startup track · status as of 2026-11-01.
+Hackathon write-up · Meta Global AI Developer Hackathon, Startup track · status as of 2026-11-03.
 Every number below comes from a file in this working copy or from `python -m showtell cost`
 (sources at the end). Files under `data/` (the job reports in `data/jobs/`, `data/usage.jsonl`) are
 git-ignored local run output, so a clone will not have them; the two recorded runs are also copied

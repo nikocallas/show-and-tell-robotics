@@ -4,8 +4,7 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 
 ## Blocked on human
 
-1. ~~`MODEL_API_KEY`~~ — added to `.env` on 2026-10-31. (It was also pasted into the chat; rotate it in
-   the dashboard after the hackathon.)
+1. ~~`MODEL_API_KEY`~~ — added to `.env` on 2026-10-31.
 2. **Demo videos** in `bench/videos/` (see `CLAUDE.md` 5.4): phone top-down ~80 cm above a plain table, good light,
    1080p, < 30 s, one continuous take per task. Stand-ins: blocks/cups in 2 sizes × 3 colors (red, blue, green),
    a yellow cylinder (marker cap / glue stick), a tall glass, 3 bowls in a row at the far edge.
@@ -19,9 +18,9 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 
 ## Current state (2026-11-03)
 
-- Code public at https://github.com/nikocallas/show-and-tell-robotics (pushed 2026-11-03).
-
-- Everything below is committed. 493 tests pass; ruff, tsc and the web build pass.
+- Code public at https://github.com/nikocallas/show-and-tell-robotics (pushed 2026-11-03). The web app links
+  to it (footer, How it works); the hosted demo shows those links after its next deploy.
+- Everything below is committed. 494 tests pass; ruff, tsc and the web build pass.
 - Second review done: a live-mode regression run plus web and Python code reviews found 24 issues
   (`data/review_findings_2026-11-01.json`), all fixed and tested. The two that mattered most: exporting a video
   run could write the local video path into the public bundle (the export now copies the video into the bundle
@@ -34,7 +33,7 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 - Next: filming → `check-videos` → `smoke` → `bench` (video condition); then re-export and redeploy the demo
   (`python -m showtell export-demo --job <id>`, then `npx vercel deploy --prod` from `web/`).
 
-## Verified API facts (from https://dev.meta.ai/docs/*.md, fetched 2026-10-31)
+## Verified API facts (from `https://dev.meta.ai/docs/*.md`, fetched 2026-10-31)
 
 - Base URL `https://api.meta.ai/v1`, Bearer `MODEL_API_KEY`; OpenAI SDK compatible (Responses API).
 - `muse-wonder-1.0` accepts text, image, video, audio, PDF. Reasoning effort `none|minimal|low|medium|high|xhigh|max`.
@@ -115,7 +114,7 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     browser-playable 8-bit H.264.
 - **Phase 1 — Scene and rendering**: done.
   - `python -m showtell render-scene --seed 1` writes `data/render_scene/seed1_{overhead,judge_angle,hero}.png`
-    and a 3 s `seed1_hero.mp4` (`--hd` renders the hero camera at 1280x720).
+    and a 4 s `seed1_hero.mp4` (`--hd` renders the hero camera at 1280x720).
   - Scene: Menagerie Panda (added `ee` site at the fingertip pad center, gravity compensation), table
     1.2 x 0.8 m at z = 0.40, three static bins (0.20 m interiors) at x = 0.67 along the far edge,
     objects on free joints, 2 directional lights + ambient, cameras `overhead` (image up = far edge,
@@ -201,11 +200,22 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     `spec_approved.auto`, billed cost next to list price; `export-demo --title/--note`; the benchmark table shows
     the sentence-only repair and explains "no video" and list-price cost. The exported bundle carries no local
     paths. A second, independent review of these changes (live-mode regression run, web and Python code review)
-    is running.
+    found 24 issues, all fixed and tested (see Current state).
 - **Phase 9 — Submission assets**: drafts done; numbers that need the human videos are marked [pending].
   - `docs/demo_script.md`: under 3 minutes, built around the real task-6 failure → diagnosis → repair, with a
     decide-once plan for which run fills the repair segment after filming (never re-run to fish for a failure).
   - `docs/submission.md`: the write-up, every number sourced in a comment block at the end.
   - README audited against the code and artifacts (judge qualified, status note, pinned Menagerie commit,
     Docker flags, limitations).
+  - Fresh clone (2026-11-03, Phase 9 acceptance without an API key): the public repo, set up by following
+    the README on a clean Mac, passes 492 tests (1 skipped until `npm install` in `web/`), the 4 slow
+    physics-gate tests, `render-scene`, `run-program examples/size_sort.py` (20/20) and the naive program's
+    19/20 glass failures as stated; the web type-check, build and ruff are clean. Not run: `smoke`, `run`
+    and `bench` (they need a key) and `docker build` (Docker was not running).
+  - Fixes from that run and a public-repo audit (18 confirmed issues, none blocking): the backend command
+    drops `--reload` (the reload restarted the server mid-job and ended the job), README commands carry no
+    trailing `#` comments (a stock interactive zsh passes them to the command as arguments), `python3`
+    instead of `python3.11`, a Panda-only sparse Menagerie checkout (44 MB instead of 2.3 GB; the test
+    suite passes on it), `export-demo` writes into this repo's `web/public/demo` from any folder, a
+    three-row Mermaid diagram, links to the repo from the web app, and smaller text fixes.
 

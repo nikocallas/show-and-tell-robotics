@@ -30,6 +30,9 @@ export const DEMO_BASE: string = IS_FIXTURE ? "/__dev-fixtures/" : `${env.BASE_U
 
 export const FIXTURE_LABEL = "Sample data - not a real run";
 
+/** The public source repository, linked from the footer and the How it works page. */
+export const REPO_URL = "https://github.com/nikocallas/show-and-tell-robotics";
+
 const MODE_KEY = "showtell.mode";
 
 function readStoredMode(): Mode | null {

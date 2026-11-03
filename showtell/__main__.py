@@ -67,7 +67,7 @@ def render_scene(
     out: Path = typer.Option(Path("data/render_scene"), help="Output folder"),
     hd: bool = typer.Option(False, help="Render the hero camera at 1280x720"),
 ) -> None:
-    """Phase 1: render PNGs from all three cameras plus a 3 s MP4 of a seeded layout."""
+    """Phase 1: render PNGs from all three cameras plus a 4 s MP4 of a seeded layout."""
     from showtell.sim.render import render_scene_preview
 
     paths = render_scene_preview(task_id=task, seed=seed, out_dir=out, hd=hd)
@@ -149,16 +149,19 @@ def render_demo(
 @app.command("export-demo")
 def export_demo(
     job: str = typer.Option(..., "--job", help="Job id (API database) or a run folder"),
-    out: Path = typer.Option(Path("web/public/demo"), help="Demo bundle folder"),
+    out: Path | None = typer.Option(
+        None, help="Demo bundle folder  [default: web/public/demo in this repo]"
+    ),
     title: str | None = typer.Option(None, help="Short title for the run in the hosted demo"),
     note: str | None = typer.Option(
         None, help="How the run was made (e.g. stand-in video, cached responses); shown with it"
     ),
 ) -> None:
     """Export a finished job as static JSON + media for the web app's demo mode."""
+    from showtell.api.export_demo import DEFAULT_OUT
     from showtell.api.export_demo import export_demo as _export
 
-    _export(job, out, title=title, note=note)
+    _export(job, out or DEFAULT_OUT, title=title, note=note)
 
 
 @app.command()

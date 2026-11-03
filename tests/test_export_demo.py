@@ -591,3 +591,20 @@ def test_a_pipeline_run_on_an_outside_video_exports_with_the_video_and_no_local_
         read(out / root.name / "report.json")["video"] == f"media/{root.name}/input/task01_size.mp4"
     )
     assert local_paths_in(out, tmp_path, base) == []
+
+
+def test_cli_writes_into_this_repo_from_any_directory(tmp_path: Path, monkeypatch) -> None:
+    import importlib
+
+    from typer.testing import CliRunner
+
+    from showtell.__main__ import app
+    from showtell.config import ROOT as REPO
+
+    module = importlib.import_module("showtell.api.export_demo")
+    seen: list[Path] = []
+    monkeypatch.setattr(module, "export_demo", lambda job, out, **kw: seen.append(Path(out)))
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, ["export-demo", "--job", JOB_ID])
+    assert result.exit_code == 0, result.output
+    assert seen == [REPO / "web" / "public" / "demo"]

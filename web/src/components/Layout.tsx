@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { backendLabel, FIXTURE_LABEL, IS_FIXTURE, LIVE_AVAILABLE } from "../config";
+import { backendLabel, FIXTURE_LABEL, IS_FIXTURE, LIVE_AVAILABLE, REPO_URL } from "../config";
 import { useMode } from "../mode";
 import { LogoMark } from "./icons";
 import { Chip, cx, Segmented } from "./ui";
@@ -112,7 +112,12 @@ export function Layout({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</main>
       <footer className="border-t border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-5 text-xs text-zinc-500 sm:flex-row sm:justify-between sm:px-6 lg:px-8">
-          <span>Show &amp; Tell Robotics: test-driven robot programming</span>
+          <span>
+            Show &amp; Tell Robotics: test-driven robot programming ·{" "}
+            <a className="underline underline-offset-2 hover:text-zinc-700" href={REPO_URL}>
+              Source on GitHub
+            </a>
+          </span>
           <span>Muse Wonder writes the spec and the program · SAM 3.1 watches and judges · MuJoCo, Franka Panda</span>
         </div>
       </footer>

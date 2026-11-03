@@ -12,25 +12,29 @@ backend at all (demo mode), which is what a Vercel deploy serves by default.
 | Replay | `/replay/:id` | The same job view driven by a recorded event log, with play/pause, restart, skip and 1x/2x/4x |
 | Runs | `/runs` | Recorded runs from the demo bundle (plus jobs started from this browser in live mode) |
 | Benchmark | `/bench` | `bench/results.json` as a table |
+| How it works | `/how` | The pipeline in four steps; also what `/new` shows when no backend is configured (the hosted demo) |
 
 ## Develop
 
 ```bash
 cd web
 npm install
-npm run dev            # http://localhost:5173, proxies /api and /media to http://localhost:8000
+npm run dev
 ```
 
-Run the backend next to it: `uvicorn showtell.api.app:app --port 8000` from the repo root. Change the
-proxy target with `VITE_PROXY_TARGET`.
+The dev server listens on http://localhost:5173 and proxies `/api` and `/media` to
+http://localhost:8000. Run the backend next to it, in another terminal from the repo root with the
+virtualenv active: `uvicorn showtell.api.app:app --port 8000`. Change the proxy target with
+`VITE_PROXY_TARGET`.
 
 ### Without a backend: dev fixtures
 
 ```bash
-npm run dev:fixture    # VITE_DEV_FIXTURE=1 vite
+npm run dev:fixture
 ```
 
-This serves `web/dev-fixtures/` (sample data, **not a real run**) as the demo bundle and mounts a mock
+It runs `VITE_DEV_FIXTURE=1 vite`, which serves `web/dev-fixtures/` (sample data, **not a real run**)
+as the demo bundle and mounts a mock
 `/api` that replays the sample job over SSE and pauses for spec approval, so every screen, the live
 path included, can be clicked through offline. Every page shows a "Sample data - not a real run"
 banner in this mode. The fixtures live outside `public/` and the plugin only runs under `vite`
@@ -40,9 +44,12 @@ banner in this mode. The fixtures live outside `public/` and the plugin only run
 ### Checks
 
 ```bash
-npm run typecheck      # tsc for src/ and for vite.config.ts + dev-fixtures/plugin.ts
-npm run build          # typecheck + production build into dist/
+npm run typecheck
+npm run build
 ```
+
+`typecheck` runs tsc on `src/` and on `vite.config.ts` + `dev-fixtures/plugin.ts`; `build` type-checks,
+then writes the production build to `dist/`.
 
 ## Demo and live modes
 
@@ -76,7 +83,7 @@ demo/index.json                [{"id", "rules", "status", "attempts", "created_a
 demo/<id>/report.json          JobReport (showtell/contracts.py), media paths rewritten to
                                "media/<id>/<path>"
 demo/<id>/events.json          the job's events, oldest first, as a JSON array (same media paths)
-demo/<id>/job.json             the GET /api/jobs/<id> shape (not read by the web app)
+demo/<id>/job.json             the GET /api/jobs/<id> shape (read for attempts[].failure_frames)
 demo/<id>/report.md            offered as a download when present
 demo/<id>/program.py           the final program
 demo/media/<id>/<path>         videos, thumbnails, keyframes and repair frames at their job-folder
@@ -144,9 +151,10 @@ src/
   hooks.ts          useLiveJob, useReplayJob, useAsync
   config.ts, mode.tsx   env vars and the demo/live mode
   lib/              format (spec sentences, numbers), bench (results.json -> table rows),
-                    diff (LCS line diff), python (tokenizer)
+                    diff (LCS line diff), python (tokenizer), provenance (how a recorded run
+                    was made), download (save text as a file)
   components/       JobView, SpecCard, AttemptTimeline, SeedGrid, SeedModal, ProgramPanel,
-                    StageStrip, VerifiedBadge, ReplayControls, Layout, ui, icons
-  pages/            NewTask, Job (live + replay), Bench, DemoIndex
+                    StageStrip, VerifiedBadge, ReplayControls, HowSteps, Layout, ui, icons
+  pages/            NewTask, Job (live + replay), Bench, DemoIndex, HowItWorks
 dev-fixtures/       sample data + mock API plugin (dev only, not a real run)
 ```

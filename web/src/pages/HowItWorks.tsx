@@ -1,7 +1,7 @@
 /** How the pipeline works. Without a backend (the hosted demo) it also stands in for New task. */
 
 import { Link } from "react-router-dom";
-import { LIVE_AVAILABLE } from "../config";
+import { LIVE_AVAILABLE, REPO_URL } from "../config";
 import { featuredRun, loadDemoRuns } from "../demo";
 import { useAsync } from "../hooks";
 import { JUDGING_NOTE, PITCH, StepsList } from "../components/HowSteps";
@@ -32,9 +32,17 @@ export function HowItWorksPage() {
           <div className="px-4 py-5 sm:px-6">
             <h2 className="text-sm font-semibold text-zinc-900">See it run</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              {LIVE_AVAILABLE
-                ? "Start a task on the live backend, or replay a recorded run."
-                : "This hosted demo has no backend: run the app locally (see the README) to start a task. The recorded runs replay real pipeline output in the browser."}
+              {LIVE_AVAILABLE ? (
+                "Start a task on the live backend, or replay a recorded run."
+              ) : (
+                <>
+                  This hosted demo has no backend: run the app locally (see the{" "}
+                  <a className="underline underline-offset-2 hover:text-zinc-900" href={REPO_URL}>
+                    README on GitHub
+                  </a>
+                  ) to start a task. The recorded runs replay real pipeline output in the browser.
+                </>
+              )}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link

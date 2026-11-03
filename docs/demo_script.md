@@ -18,7 +18,8 @@ As of 2026-11-01:
   `bench-task06_color_exc-sentence-20261031-154958` exactly (same Muse Wonder responses, served from
   the local cache).
 - **Recorded, stand-in video:** task-3 run `20261031-154240-8ca2da`, made from
-  `data/probe/standin_task03_overhead.mp4`, a top-down simulator render of the robot doing task 3.
+  `standin_task03_overhead.mp4` (tracked at `web/public/demo/media/20261031-154240-8ca2da/input/`),
+  a top-down simulator render of the robot doing task 3.
   It is not a human demo. 20/20 on the first try, SAM agreed on 80/80 checks, 640×480 videos.
 - **Not filmed yet:** every human demo video. `bench/videos/` has no task videos, so the
   benchmark's video condition reads `missing_video` for all six tasks.

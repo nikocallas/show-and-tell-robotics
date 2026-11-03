@@ -188,7 +188,7 @@ class Recorder:
 
 
 def render_scene_preview(task_id: str, seed: int, out_dir: Path, hd: bool = False) -> list[Path]:
-    """PNG from each camera + a 3 s hero MP4 of the seeded layout (Phase 1 acceptance)."""
+    """PNG from each camera + a 4 s hero MP4 of the seeded layout (Phase 1 acceptance)."""
     import shutil
 
     import imageio.v3 as iio
@@ -212,7 +212,7 @@ def render_scene_preview(task_id: str, seed: int, out_dir: Path, hd: bool = Fals
         p = out_dir / f"seed{seed}_{cam}.png"
         iio.imwrite(p, rec.render(robot.data, cam, w, h))
         paths.append(p)
-    # 3 s clip: the arm unfolds from its park pose to the ready pose and back.
+    # About 4 s (3 s at least): the arm unfolds from its park pose to the ready pose and back.
     robot.recorder = rec
     robot.idle(0.4)
     robot.go_ready()

@@ -53,7 +53,7 @@ from showtell.api.jobs import (
 from showtell.config import ROOT, settings
 from showtell.contracts import Event
 
-DEFAULT_OUT = Path("web/public/demo")
+DEFAULT_OUT = ROOT / "web" / "public" / "demo"  # this repo's bundle, from any directory
 SEED_MEDIA = ("full.mp4", "thumb.jpg", "judge.mp4", "judge_angle.mp4")
 
 
