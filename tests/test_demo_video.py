@@ -106,7 +106,10 @@ def test_a_voiceover_brings_only_its_sound(tmp_path: Path, monkeypatch) -> None:
     assert "location" not in info["format"].get("tags", {})
     # The first track's sound, not the second's.
     raw = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", str(out), "-map", "0:a", "-ss", "0.5", "-t", "1", "-f", "f32le", "-"],
+        [
+            "ffmpeg", "-v", "error", "-i", str(out), "-map", "0:a",
+            "-ss", "0.5", "-t", "1", "-f", "f32le", "-",
+        ],
         check=True,
         capture_output=True,
     ).stdout  # fmt: skip

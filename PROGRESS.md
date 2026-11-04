@@ -37,7 +37,8 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 - Code public at https://github.com/nikocallas/show-and-tell-robotics. Hosted demo at
   https://show-and-tell-robotics.vercel.app (Vercel project `show-and-tell-robotics`, team `laymen`, deployed from
   `web/` with the CLI; production domain public, no backend). Package pushed and redeployed on 2026-11-04 with your OK.
-  Checked as an anonymous visitor: the video link is `video/mp4` and streams (206, 176.8 s, 1920x1080), a missing video
+  Your voiced cut went live the same day. Checked as an anonymous visitor: the video link is `video/mp4` with an audio
+  stream and streams (206, 176.8 s, 1920x1080), byte-identical to the local voiced cut, a missing video
   is a real 404, three recorded runs and the stand-in benchmark are live, and the public repo has the new files and
   not the private checklist.
 - If you film: `check-videos` → `bench --conditions video` → re-export → redeploy; `docs/demo_script.md` has the steps.
