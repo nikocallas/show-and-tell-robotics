@@ -17,15 +17,17 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    fields are not known. No rule found on video length (third-party notes of the participant guide say 3 minutes;
    the cut is 2:57).
 4. ~~**Vercel**~~ — logged in and deployed on 2026-11-01: https://show-and-tell-robotics.vercel.app
-5. **Submission**: your details, your track, the video's voice, and pressing submit. Paste-ready text is in
+5. **Submission**: your details, your track, and pressing submit. Paste-ready text is in
    `docs/submission_form.md`; the private checklist is `docs/submit_checklist.local.md` (git-ignored).
 
-## Current state (2026-11-03)
+## Current state (2026-11-04)
 
 - Submission package done: demo video (`demo_video/out/`, built by `python -m demo_video`), write-up
-  (`docs/submission.md`), form answers (`docs/submission_form.md`), shot list (`docs/demo_script.md`). macOS's license
-  keeps its system voices to personal, non-commercial use, so the published cut is captions only. You chose on
-  2026-11-04 to record your own voice; `docs/demo_script.md` has the steps.
+  (`docs/submission.md`), form answers (`docs/submission_form.md`), shot list (`docs/demo_script.md`). The published
+  cut has your recorded voice (2026-11-04), because macOS's license keeps its system voices to personal, non-commercial
+  use. Muse Voice Transcribe, on the whole recording and on each of the 32 narration lines, came back close to the
+  script (mean line similarity 0.93); every number but one came back as written, with "SAM 3.1" often returned as
+  "SAM 31".
 - The benchmark's video condition ran on labelled stand-in clips (`bench/videos/standin/`, simulator renders of the
   reference programs): 6 of 6 tasks 20/20 on the first try against the reference, against 4 of 6 from the sentence
   alone. SAM 3.1 agreed on 302/302 decided checks, 38 undecided (from overhead, SAM found no yellow cylinder in 38 of
@@ -214,14 +216,14 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     the sentence-only repair and explains "no video" and list-price cost. The exported bundle carries no local
     paths. A second, independent review of these changes (live-mode regression run, web and Python code review)
     found 24 issues, all fixed and tested (see Current state).
-- **Phase 9 — Submission assets**: **done**, with stand-in clips in place of the human demos, and captions only until
-  you choose a voice.
+- **Phase 9 — Submission assets**: **done**, with stand-in clips in place of the human demos and your recorded voice.
   - `demo_video/`: builds the video with no editor. Real web app in headless Chrome, a real job on the local backend
     (Wonder and SAM from the cache of the stand-in run), a replay of the recorded repair run, 1080p robot footage
     whose outcomes are checked on every build (the naive program on seed 3018, Muse Wonder's program on the same seed,
     the first program on seed 6004). The recorded run's numbers, the benchmark counts and the cost range are read from
     the run data and asserted; the naive program's 19 of 20 is guarded by the Phase 2 gate. Captions are timed with a
-    macOS voice that is not published. A draft's audio, read back by Muse Voice Transcribe, came back almost word for word.
+    macOS voice that is not published. `--voiceover` adds a recording's sound only (first audio track, mono, -16 LUFS),
+    never its metadata or file name, which can hold a location.
   - Two independent audits (workflows, 2026-11-03) re-checked the package against the data and the frames. Fixed: the macOS voice licence problem, the missing `--voiceover` flag, "human demo shows"
     wording where none exists, overclaims about what surprised us (the fragile-object checks follow our own prompt; the
     reach limit was named in the error), the true cause of the 38 undecided checks, cache effects on times, on-screen

@@ -1,7 +1,7 @@
 # Show & Tell Robotics
 
 Hackathon write-up · Meta Global AI Developer Hackathon, Startup track, theme "Push the Frontier" ·
-status as of 2026-11-03. Every number below comes from a file in this working copy or from
+status as of 2026-11-04. Every number below comes from a file in this working copy or from
 `python -m showtell cost` (sources at the end). Files under `data/` (the job reports in `data/jobs/`,
 `data/usage.jsonl`) are git-ignored local run output, so a clone will not have them; the three
 recorded runs are also copied into `web/public/demo/`. No human demonstration has been filmed:
@@ -276,8 +276,8 @@ List price per run, from each run's report:
 Total API spend so far (`python -m showtell cost`, 2026-11-03): **$10.77 paid** of the ~$150 credit,
 across 751 paid calls: SAM 3.1 $8.82 (704 requests, 44,095 billed frames) and Muse Wonder $1.95 (47
 calls). The local cache served every other logged call, so rebuilding and replaying runs costs
-nothing. That log does not cover one Muse Voice Transcribe call, used once to check a draft of the
-video's narration.
+nothing. That log does not cover the Muse Voice Transcribe calls used to check the video's narration
+against its script.
 
 ### Speed
 
@@ -353,7 +353,7 @@ from MuJoCo Menagerie (both Apache 2.0). Other dependencies, pinned in `requirem
 ## Links
 
 - Repository: <https://github.com/nikocallas/show-and-tell-robotics> (public)
-- Demo video: <https://show-and-tell-robotics.vercel.app/video/show-and-tell-demo.mp4> (under 3 minutes,
+- Demo video: <https://show-and-tell-robotics.vercel.app/video/show-and-tell-demo.mp4> (2:57, narrated,
   captions burned in)
 - Hosted demo: <https://show-and-tell-robotics.vercel.app> (demo mode: replays the three recorded runs, no backend)
 

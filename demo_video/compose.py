@@ -64,6 +64,25 @@ def synthesize(text: str, out: Path, voice: str = VOICE, rate: int = RATE_WPM) -
     return duration_of(out)
 
 
+def measure_loudness(audio: Path, cleanup: str, target: str) -> str:
+    """The first pass of a two-pass loudnorm on the first audio track, as its filter options."""
+    done = subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-nostats", "-i", str(audio), "-map", "0:a:0",
+            "-af", f"{cleanup},loudnorm={target}:print_format=json", "-f", "null", "-",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )  # fmt: skip
+    report = done.stderr[done.stderr.rindex("{") :]
+    m = json.loads(report[: report.index("}") + 1])
+    return (
+        f"measured_I={m['input_i']}:measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:"
+        f"measured_thresh={m['input_thresh']}:offset={m['target_offset']}"
+    )
+
+
 def mix_narration(placed: list[tuple[float, Path]], total: float, out: Path) -> Path:
     """Place each WAV at its start time on one mono track."""
     track = np.zeros(int((total + 1) * SAMPLE_RATE), dtype=np.float32)

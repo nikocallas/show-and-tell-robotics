@@ -46,7 +46,8 @@ benchmark's stand-in run, so a rebuild on a machine that has that cache pays not
 ## Sound and publishing
 
 - `--voiceover my_voice.m4a` adds a recorded voice to the captions-only cut and writes
-  `demo_video/out/show_and_tell_demo_voiced.mp4`.
+  `demo_video/out/show_and_tell_demo_voiced.mp4`. Only the sound comes over: the first audio track, as
+  mono at -16 LUFS, without the recording's metadata.
 - `--publish FILE` copies a finished cut and its captions to `web/public/video/`, where the hosted demo
   serves them after the next deploy.
 

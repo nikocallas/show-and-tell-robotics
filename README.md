@@ -7,7 +7,7 @@ Show & Tell is test-driven robot programming. It is built to use Meta's models t
 video of a person sorting objects plus one sentence ("Sort by size, and don't touch the glass.")
 into pass/fail checks and a short robot program.
 
-**Demo video:** [under 3 minutes, with captions](https://show-and-tell-robotics.vercel.app/video/show-and-tell-demo.mp4).
+**Demo video:** [2:57, narrated, with captions](https://show-and-tell-robotics.vercel.app/video/show-and-tell-demo.mp4).
 
 **Hosted demo:** [show-and-tell-robotics.vercel.app](https://show-and-tell-robotics.vercel.app) replays three recorded runs in the browser (no
 backend): a task-6 run where one test scene fails, Muse Wonder diagnoses it and the patched program

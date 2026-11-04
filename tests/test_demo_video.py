@@ -1,8 +1,11 @@
-"""The demo video's script and the pure parts of its build (no browser, no ffmpeg, no voice)."""
+"""The demo video's script and the pure parts of its build (no browser; one test needs ffmpeg)."""
 
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from demo_video import cards, compose, script
@@ -55,6 +58,63 @@ def test_every_stand_in_or_replay_shot_is_labelled() -> None:
     assert shots["benchmark"].tag == script.TAG_BENCH
     assert shots["cold_open"].tag == script.TAG_NAIVE
     assert "stand-in" in shots["glass"].tag
+
+
+@pytest.mark.skipif(not shutil.which("ffmpeg"), reason="needs ffmpeg")
+def test_a_voiceover_brings_only_its_sound(tmp_path: Path, monkeypatch) -> None:
+    """A phone recording can hold more tracks, chapters and its location: none may reach the cut."""
+    from demo_video import __main__ as build
+
+    silent = tmp_path / "silent.mp4"
+    compose.run(
+        "-f", "lavfi", "-i", "color=black:s=64x64:r=10:d=4",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(silent),
+    )  # fmt: skip
+    chapters = tmp_path / "chapters.txt"
+    chapters.write_text(";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=1000\ntitle=x\n")
+    take = tmp_path / "private place name.mov"
+    compose.run(
+        "-f", "lavfi", "-i", "sine=frequency=220:duration=2",
+        "-f", "lavfi", "-i", "sine=frequency=330:duration=2",
+        "-f", "ffmetadata", "-i", str(chapters),
+        "-map", "0", "-map", "1", "-map_chapters", "2", "-c:a", "aac",
+        "-metadata", "title=private place name", "-metadata", "location=+1.0+2.0/",
+        "-metadata:s:a:0", "handler_name=private place name", str(take),
+    )  # fmt: skip
+    monkeypatch.setattr(build, "OUT", tmp_path)
+    monkeypatch.setattr(build, "SILENT", silent)
+
+    out = build.swap_voice(take)
+
+    probe = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-show_chapters", "-show_entries",
+            "stream=codec_type,channels,duration:format=duration:format_tags:stream_tags",
+            "-of", "json", str(out),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )  # fmt: skip
+    info = json.loads(probe.stdout)
+    assert sorted(st["codec_type"] for st in info["streams"]) == ["audio", "video"]
+    audio = next(st for st in info["streams"] if st["codec_type"] == "audio")
+    assert audio["channels"] == 1
+    assert float(audio["duration"]) == pytest.approx(4, abs=0.1)  # the whole cut, not just the take
+    assert not info.get("chapters")
+    assert b"private place name" not in out.read_bytes()
+    assert "location" not in info["format"].get("tags", {})
+    # The first track's sound, not the second's.
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(out), "-map", "0:a", "-ss", "0.5", "-t", "1", "-f", "f32le", "-"],
+        check=True,
+        capture_output=True,
+    ).stdout  # fmt: skip
+    samples = np.frombuffer(raw, dtype=np.float32)
+    freqs = np.fft.rfftfreq(len(samples), 1 / compose.SAMPLE_RATE)
+    assert freqs[np.abs(np.fft.rfft(samples)).argmax()] == pytest.approx(220, abs=20)
+    with pytest.raises(AssertionError, match="private review"):
+        build.publish(tmp_path / build.PREVIEW)
 
 
 def test_cards_escape_their_text() -> None:

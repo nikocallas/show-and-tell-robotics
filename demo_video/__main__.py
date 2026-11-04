@@ -397,12 +397,19 @@ def write_shot_list(shots: list[script.Shot], lengths: dict[str, float]) -> None
 
 
 def swap_voice(audio: Path) -> Path:
-    """The captions-only cut with a recorded voice added."""
+    """The captions-only cut with a recorded voice added: first audio track only, as mono at
+    -16 LUFS, for the whole length of the cut. Nothing but the sound comes over: a phone's
+    recording can carry its location in its metadata, and this file goes public."""
     out = OUT / "show_and_tell_demo_voiced.mp4"
     length = compose.duration_of(SILENT)  # the whole cut, even if the take ends early
+    cleanup = "aformat=channel_layouts=mono,highpass=f=70"
+    target = "I=-16:TP=-1.5:LRA=11"
+    measured = compose.measure_loudness(audio, cleanup, target)
+    fade = f"afade=t=in:d=0.05,afade=t=out:st={max(0.0, length - 0.6):.3f}:d=0.6"
     compose.run(
         "-i", str(SILENT), "-i", str(audio),
-        "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,apad",
+        "-map", "0:v", "-map", "1:a:0", "-map_metadata", "-1", "-map_chapters", "-1",
+        "-af", f"{cleanup},loudnorm={target}:{measured},aresample=48000,apad,{fade}",
         "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-t", f"{length:.3f}",
         "-movflags", "+faststart", str(out),
     )  # fmt: skip

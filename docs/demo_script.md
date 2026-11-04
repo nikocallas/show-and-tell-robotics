@@ -1,7 +1,7 @@
 # Demo video
 
 Built by `python -m demo_video` from this repository (see `demo_video/README.md`): 1920×1080, H.264,
-under 3 minutes, captions burned in. The copy at `web/public/video/show-and-tell-demo.mp4` ships with
+2:57, narrated by a person, captions burned in. The copy at `web/public/video/show-and-tell-demo.mp4` ships with
 the hosted demo.
 
 Story: a program knocks over a glass → show it once, say the rule → the tests → the program → 20
@@ -25,6 +25,8 @@ video matters → who it is for → a real arm next.
 - **Every stand-in result is labelled** on screen, and the end card says so too. The narration says
   it when the clip first appears and on the benchmark shot.
 - **Cards** (title, models, impact, end) are ours, written in `demo_video/cards.py`.
+- **The narration** is a person reading the script along with the captions, in one take. Its video
+  stream is the captions-only cut, unchanged.
 
 ## Shot list
 
@@ -57,16 +59,17 @@ Generated from `demo_video/script.py` with the shots' real lengths.
 
 ## Sound
 
-The cut is timed to the narration above and has no voice of its own. macOS's license keeps its system
-voices to personal, non-commercial use, so `demo_video/out/preview_macos_voice.mp4` is for your own
-review, and it is never what gets published.
+The build times the cut with a macOS voice but does not publish it: macOS's license keeps its system
+voices to personal, non-commercial use, so `demo_video/out/preview_macos_voice.mp4` is for your own review.
+The published cut has a recorded human voice.
 
-To use your own voice, which also sounds better, take one take of about three minutes:
+To record a new take, about three minutes:
 
 1. Open `demo_video/out/show_and_tell_demo_silent.mp4` in QuickTime and play it. The captions are the
    script, so read along with them.
 2. Record with Voice Memos at the same time, starting with the first caption at about 0:00.3.
-3. Export the recording, then add it and publish the result:
+3. Export the recording, then add it and publish the result. Only the sound comes over: the first audio
+   track, as mono at -16 LUFS. A phone recording's metadata and file name, which can hold your location, do not.
 
 ```bash
 .venv/bin/python -m demo_video --voiceover my_voice.m4a
@@ -90,15 +93,16 @@ stay. `bench/videos/README.md` has the setup. Then:
    first run is the result: never re-run it to get a different outcome, and never clear the cache.
 3. Point `LIVE_CLIP` in `demo_video/ui_shots.py` at the clip, take the stand-in label off the live shots
    in `demo_video/script.py` (and their entry in `tests/test_demo_video.py`), match the narration to what
-   the run shows, and rebuild.
-4. `.venv/bin/python -m showtell export-demo --job data/jobs/<that job>`, then publish the new cut and
-   redeploy `web/`.
+   the run shows, rebuild, and record a new take (see Sound).
+4. `.venv/bin/python -m showtell export-demo --job data/jobs/<that job>`, then publish the new voiced cut
+   and redeploy `web/`.
 
 If the first program fails a scene and a repair verifies it, that run can carry the whole repair
 segment. If it passes on the first try, keep the recorded sentence-only run for that segment, with its
 label.
 
 <!-- sources:
+- narration checked against the script: Muse Voice Transcribe on the whole recording and on a window around each of the 32 narration lines, with script terms as keyword hints (including "SAM 3.1" and "6004"). Mean line similarity 0.93; about a quarter of the gap is the transcriber repeating words, the rest is neighbouring words in the window, spelling and changed words. Every number but one came back as written; "SAM 3.1" came back as "SAM 31" in all 3 line cuts and once in the whole-file run, while the phone's own transcript, given no hints, has "3.1" at 0:30 and "3.one" at 1:40 and 2:22. Video stream of the voiced cut = the captions-only cut: same MD5 with ffmpeg -c copy -f md5.
 Script numbers read and asserted at build time from web/public/demo/20261101-063309-c15793/{report,job}.json and bench/results.json: demo_video/script.py load_facts, Facts.matches. Robot outcomes checked on every build: demo_video/__main__.py robot_clips. Naive count: tests/test_phase2_gate.py.
 - 19 of 20 knocked over, seed 3018 tilted 90 deg: examples/size_sort_naive.py on seeds 3000-3019 (19 fail untouched and upright, tilt 90-111 deg; seed 3012 passes); tests/test_phase2_gate.py; PROGRESS.md Phase 2
 - "Every program it has written for that task avoids the glass": attempts[*].program of every data/jobs/*/report.json with task_id task03_size_glass or a glass rule; all contain avoid(
