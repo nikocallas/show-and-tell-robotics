@@ -9,7 +9,7 @@ the end of that file.
 
 **Name:** Show & Tell Robotics
 
-**Track:** Startup
+**Track:** Indie Developer
 
 **Theme:** Push the Frontier
 

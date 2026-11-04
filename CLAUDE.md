@@ -1,4 +1,4 @@
-# CLAUDE.md — Show & Tell Robotics (Meta Global AI Developer Hackathon, Startup track)
+# CLAUDE.md — Show & Tell Robotics (Meta Global AI Developer Hackathon, Indie Developer track)
 
 You are building this project end to end. Read this whole file before writing code.
 Work phase by phase (Section 6). Do not start a phase until the previous phase's

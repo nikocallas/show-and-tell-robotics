@@ -1,6 +1,6 @@
 # Show & Tell Robotics
 
-Hackathon write-up · Meta Global AI Developer Hackathon, Startup track, theme "Push the Frontier" ·
+Hackathon write-up · Meta Global AI Developer Hackathon, Indie Developer track, theme "Push the Frontier" ·
 status as of 2026-11-04. Every number below comes from a file in this working copy or from
 `python -m showtell cost` (sources at the end). Files under `data/` (the job reports in `data/jobs/`,
 `data/usage.jsonl`) are git-ignored local run output, so a clone will not have them; the three

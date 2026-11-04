@@ -17,7 +17,7 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    fields are not known. No rule found on video length (third-party notes of the participant guide say 3 minutes;
    the cut is 2:57).
 4. ~~**Vercel**~~ — logged in and deployed on 2026-11-01: https://show-and-tell-robotics.vercel.app
-5. **Submission**: your details, your track, and pressing submit. Paste-ready text is in
+5. **Submission**: your details and pressing submit (Indie Developer track, your call on 2026-11-04). Paste-ready text is in
    `docs/submission_form.md`; the private checklist is `docs/submit_checklist.local.md` (git-ignored).
 
 ## Current state (2026-11-04)
