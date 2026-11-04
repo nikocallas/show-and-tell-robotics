@@ -7,13 +7,16 @@ Show & Tell is test-driven robot programming. It is built to use Meta's models t
 video of a person sorting objects plus one sentence ("Sort by size, and don't touch the glass.")
 into pass/fail checks and a short robot program.
 
-**Live demo:** [show-and-tell-robotics.vercel.app](https://show-and-tell-robotics.vercel.app) replays two recorded runs in the browser (no
-backend): a task-6 run where one test scene fails, Muse Wonder diagnoses it and the patched program
-passes 20/20, and a task-3 run from a stand-in video.
+**Demo video:** [under 3 minutes, with captions](https://show-and-tell-robotics.vercel.app/video/show-and-tell-demo.mp4).
 
-**Status:** the human demo videos are not filmed yet. So far the video path has run only on a
-rendered stand-in clip (a top-down render of the robot doing task 3), and the benchmark's video
-condition has not run (every video entry in `bench/results.json` is `missing_video`).
+**Hosted demo:** [show-and-tell-robotics.vercel.app](https://show-and-tell-robotics.vercel.app) replays three recorded runs in the browser (no
+backend): a task-6 run where one test scene fails, Muse Wonder diagnoses it and the patched program
+passes 20/20, and task-3 and task-6 runs from stand-in clips.
+
+**Status:** simulation only, and the human demo videos are not filmed yet. The benchmark's video
+condition has run on labelled stand-in clips (`bench/videos/standin/`): top-down simulator renders of
+each task's reference program, not recordings of a person. Every video entry for a human clip in
+`bench/results.json` is still `missing_video`.
 
 The program is tested on 20 randomized MuJoCo scenes with a Franka Panda arm. Simulator ground truth
 grades every scene and decides pass/fail; in full runs (`run` and the web app, judge on by default)
@@ -37,7 +40,8 @@ fails is reported as not verified.
    default; off in the benchmark's sentence-only condition). We log how often they agree; ground
    truth decides.
 6. **Repair** — on any failure, Muse Wonder gets the failed checks, any program error, the contact log
-   (which object touched what, during which skill step) and 8 frames of the first failing scene,
+   for failed `untouched`, `upright` or `unmoved` checks (which object touched what, during which skill
+   step) and 8 frames of the first failing scene,
    explains the failure in one sentence and patches the program. All 20 scenes rerun; at most 3
    repairs.
 7. **Verified** — 20/20 gives you the program, a test report and the full attempt log.
@@ -75,31 +79,36 @@ flowchart TB
 
 All calls go through the OpenAI-compatible Meta Model API (`https://api.meta.ai/v1`, Responses API),
 are cached on disk by request hash (reruns cost $0) and are logged to `data/usage.jsonl`
-(`python -m showtell cost`).
+(`python -m showtell cost`). Every model the product calls at runtime is a Meta model.
 
 ## Results
 
 <!-- bench:start -->
 | Task | First try (video) | Final (video) | Repairs | Final (sentence only) | Judge agreement | Cost $ | Time |
 |---|---|---|---|---|---|---|---|
-| task01_size | no video | no video | — | 20/20 | — | 0.05 | — |
-| task02_color | no video | no video | — | 20/20 | — | 0.05 | — |
-| task03_size_glass | no video | no video | — | 0/20 | — | 0.08 | — |
-| task04_clear | no video | no video | — | 20/20 | — | 0.06 | — |
-| task05_shape | no video | no video | — | 20/20 | — | 0.04 | — |
-| task06_color_exc | no video | no video | — | 0/20 (1 repair) | — | 0.14 | — |
+| task01_size | 20/20 (stand-in) | 20/20 (stand-in) | 0 | 20/20 | 100% | 1.05 | 2.5 min |
+| task02_color | 20/20 (stand-in) | 20/20 (stand-in) | 0 | 20/20 | 100% | 1.08 | 3.5 min |
+| task03_size_glass | 20/20 (stand-in) | 20/20 (stand-in) | 0 | 0/20 | 100% | 2.00 | 2.0 min |
+| task04_clear | 20/20 (stand-in) | 20/20 (stand-in) | 0 | 20/20 | 100% (19 undecided) | 1.75 | 3.6 min |
+| task05_shape | 20/20 (stand-in) | 20/20 (stand-in) | 0 | 20/20 | 100% (19 undecided) | 1.22 | 2.5 min |
+| task06_color_exc | 20/20 (stand-in) | 20/20 (stand-in) | 0 | 0/20 (1 repair) | 100% | 1.26 | 2.8 min |
 
-Pass rates are k/20 randomized scenes, scored against each task's reference checks (bench/tasks.yaml), which encode what each task's demo video shows (the shot list in bench/videos/README.md): a run can pass every check in the spec it generated and still score lower here. First try = the first generated program; Final = after up to 3 repairs (sentence-only repairs in brackets). Sentence only = the same pipeline without the demo video and without the SAM judge (simulator ground truth only). "no video" = the human demo video for the task is not recorded yet, so the video condition has not run. Judge agreement = SAM 3.1 on the rendered clips vs simulator ground truth (video condition). Cost $ = list price of the Meta API calls each run made, summed over the conditions that ran; responses served from the local cache are counted at list price but billed $0. Repairs and Time = the video condition.
+Pass rates are k/20 randomized scenes, scored against each task's reference checks (bench/tasks.yaml), which encode what each task's demo video is to show (the shot list in bench/videos/README.md): a run can pass every check in the spec it generated and still score lower here. First try = the first generated program; Final = after up to 3 repairs (sentence-only repairs in brackets). Sentence only = the same pipeline without the demo video and without the SAM judge (simulator ground truth only). "(stand-in)" = the human demo is not filmed, so that run used a stand-in clip instead: a top-down simulator render of the task's reference program (bench/make_standins.py), not a recording of a person. It tests whether Muse Wonder reads the mapping from a demonstration, not how the pipeline copes with a phone video. Judge agreement = SAM 3.1 on the rendered clips vs simulator ground truth (video condition), over the checks SAM could decide; undecided = SAM did not find an object the check needs, never counted as agreement. Cost $ = list price of the Meta API calls each run made, summed over the conditions that ran; responses served from the local cache are counted at list price but billed $0, and take no API time, so a cached run's Time is shorter (fully cached here: task01_size sentence only, task03_size_glass stand-in video, task03_size_glass sentence only). Repairs and Time = the video condition.
 
 Own checks vs reference checks:
 
 - task03_size_glass (sentence only): 20/20 on its own checks, 0/20 on the reference checks.
 - task06_color_exc (sentence only): 20/20 on its own checks, 0/20 on the reference checks.
 
-Updated 2026-10-31 15:51:13.
+Updated 2026-11-03 15:53:56.
 <!-- bench:end -->
 
 Every number above is generated by `bench/run_bench.py` from `bench/results.json`.
+
+With a stand-in clip, six of six tasks match the reference on the first try; from the sentence alone,
+four of six do. The stand-ins show what a demonstration adds to the sentence, not how the pipeline
+copes with a phone video. SAM 3.1 agrees with the simulator on all 302 checks it could decide on those
+runs, but every one of those verdicts is a pass, so the agreement says little yet about failures.
 
 ## Setup
 
@@ -133,11 +142,11 @@ python -m showtell smoke
 
 ## Use it
 
-Full pipeline on a demo video (`bench/videos/task03_size_glass.mp4` is not in the repo yet: film it as
-described in `bench/videos/README.md`, or pass your own clip and `--task`):
+Full pipeline on a demonstration clip. This is a stand-in in the repo; to use your own, film it as
+described in `bench/videos/README.md`:
 
 ```bash
-python -m showtell run --video bench/videos/task03_size_glass.mp4 --rules "Sort by size, and don't touch the glass."
+python -m showtell run --video bench/videos/standin/standin_task03_size_glass.mp4 --task task03_size_glass --rules "Sort by size, and don't touch the glass."
 ```
 
 The same task from the sentence alone (the ablation):
@@ -158,10 +167,15 @@ Render a seeded scene from all three cameras:
 python -m showtell render-scene --seed 1
 ```
 
-Benchmark (both conditions, resumable):
+Benchmark (every condition with a clip, resumable). `make-standins` re-renders the stand-in clips
+without any API call:
 
 ```bash
 python -m showtell bench
+```
+
+```bash
+python -m showtell make-standins
 ```
 
 Web app (upload → approve spec → live 20-scene grid → attempts → report). Start the backend and the
@@ -209,9 +223,10 @@ showtell/
   pipeline.py    end-to-end orchestration with streamed events
   api/           FastAPI + SQLModel + background jobs + SSE + demo export
 web/             Vite + React + TypeScript + Tailwind app (live and demo mode)
-bench/           tasks.yaml (with reference checks), run_bench.py, videos/
+bench/           tasks.yaml (with reference checks), run_bench.py, make_standins.py, videos/ (videos/standin/: stand-in clips)
 examples/        hand-written programs (Phase 2 gate, reference programs for every task)
-docs/            submission.md (hackathon write-up), demo_script.md (demo video shot list)
+demo_video/      builds the demo video from real screen capture and simulator footage of real programs
+docs/            submission.md (write-up), submission_form.md (form answers), demo_script.md (shot list)
 tests/           pytest (offline; `-m slow` runs the physics gate)
 ```
 
@@ -239,7 +254,8 @@ an unreachable over-the-blue waypoint while carrying the red cube, aborting the 
 placement."), dropped `avoid` for the short cubes, and the patch passed all 20 scenes against its
 spec. Written without the video, that spec sends green to the middle bin, while the reference (what
 the human demo is to show, `bench/tasks.yaml`) sends it to the right bin, so the table above scores
-the same program 0/20: the gap the video is meant to close.
+the same program 0/20. With the stand-in clip, the same sentence gives the reference mapping and 20/20
+on the first try.
 
 ## Limitations
 
@@ -250,9 +266,22 @@ the same program 0/20: the gap the video is meant to close.
 - `avoid` picks its detour waypoint without checking reachability. On task 6 (seed 6004) that stopped
   the first program with an IK error; it is left as is so benchmark outcomes are not tuned after the
   fact.
-- VERIFIED means the program passes the approved spec's checks on 20 seeded scenes, so it is only as
+- VERIFIED means the program passes the approved spec's checks on its seeded test scenes (20 by
+  default), so it is only as
   right as the spec. Written from the sentence alone, task 3's spec reversed the bins and task 6's
   sent green to the middle bin (0/20 against the reference).
-- No human demo video has been processed yet; the video path has only run on a rendered stand-in
-  clip.
+- No human demo video has been processed yet; the video path has only run on rendered stand-in clips.
+  In those renders SAM finds no bowls, so the track summary falls back to thirds of the frame and can
+  misplace an end position (Muse Wonder's spec still came out right on all six tasks), and from overhead
+  SAM finds a yellow cylinder in only 2 of 40 test-scene clips (38 undecided judge checks).
+- The hosted demo replays recorded runs. The live app needs a local backend or Docker.
 - Next: a real-arm pilot that runs the verified program on a physical Panda.
+
+## How it was built
+
+Everything here was written during the Meta Global AI Developer Hackathon (first commit 2026-10-31; see
+the history). Claude Code was the coding agent, which is why commits carry a Claude co-author line.
+Main third-party parts: [MuJoCo](https://github.com/google-deepmind/mujoco) and the Franka Panda model
+from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) (both Apache 2.0). Other
+dependencies, pinned in `requirements.txt` and `web/package-lock.json`, keep their own licenses, including
+Meta's `meta-sam-parser` (SAM License).

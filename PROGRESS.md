@@ -9,29 +9,34 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    1080p, < 30 s, one continuous take per task. Stand-ins: blocks/cups in 2 sizes × 3 colors (red, blue, green),
    a yellow cylinder (marker cap / glue stick), a tall glass, 3 bowls in a row at the far edge.
    Files: `smoke.mp4` (5 s, a hand moving one block), `task01_size.mp4`, `task02_color.mp4`, `task03_size_glass.mp4`,
-   `task04_clear.mp4`, `task05_shape.mp4`, `task06_color_exc.mp4`. Blocks Phase 3 acceptance and the benchmark.
-3. **Hackathon rules**: confirm submission fields, video length limit and the deadline. An unofficial listing
-   (Internshala) says submissions close 5 Nov 2026, 6:30 AM IST (4 Nov, 7:00 PM CST); the official rules were not
-   found online. Repo visibility: public (your call, 2026-11-03).
+   `task04_clear.mp4`, `task05_shape.mp4`, `task06_color_exc.mp4`. Blocks Phase 3 acceptance and the benchmark's
+   human condition.
+3. ~~**Hackathon rules**~~ — read on 2026-11-03: <https://cerebralvalley.ai/e/meta-ai-developer-hackathon/waiver>.
+   Submissions close Wed Nov 4, 2026, 9:00 PM ET (8:00 PM CT) at the Cerebral Valley portal; judged on Impact 30%,
+   Use of Meta AI Tooling 25%, Technical Depth & Execution 20%, Demo 25%. The form itself is behind a login, so its
+   fields are not known. No rule found on video length (third-party notes of the participant guide say 3 minutes;
+   the cut is 2:57).
 4. ~~**Vercel**~~ — logged in and deployed on 2026-11-01: https://show-and-tell-robotics.vercel.app
-5. **Voiceover + submission** (end of project).
+5. **Submission**: your details, your track, the video's voice, and pressing submit. Paste-ready text is in
+   `docs/submission_form.md`; the private checklist is `docs/submit_checklist.local.md` (git-ignored).
 
 ## Current state (2026-11-03)
 
-- Code public at https://github.com/nikocallas/show-and-tell-robotics (pushed 2026-11-03). The web app links
-  to it (footer, How it works); the hosted demo was redeployed with those links on 2026-11-03.
-- Everything below is committed. 494 tests pass; ruff, tsc and the web build pass.
-- Second review done: a live-mode regression run plus web and Python code reviews found 24 issues
-  (`data/review_findings_2026-11-01.json`), all fixed and tested. The two that mattered most: exporting a video
-  run could write the local video path into the public bundle (the export now copies the video into the bundle
-  and refuses any bundle text holding a local path), and the replay hid the export note (now shown from 0:00).
-  A spec supplied with a job now reads "Spec supplied", never "auto-approved".
-- Demo bundle `web/public/demo/` (39 MB, committed): the task-6 repair run and the task-3 stand-in run,
-  re-exported through the path guard; spot-checked in the production build.
-- Hosted demo live at https://show-and-tell-robotics.vercel.app (Vercel project `show-and-tell-robotics`,
-  team `laymen`, deployed from `web/` with the CLI; production domain public, no backend).
-- Next: filming → `check-videos` → `smoke` → `bench` (video condition); then re-export and redeploy the demo
-  (`python -m showtell export-demo --job <id>`, then `npx vercel deploy --prod` from `web/`).
+- Submission package done: demo video (`demo_video/out/`, built by `python -m demo_video`), write-up
+  (`docs/submission.md`), form answers (`docs/submission_form.md`), shot list (`docs/demo_script.md`). The video's
+  sound is your call: macOS's license keeps its system voices to personal, non-commercial use, so the published
+  cut is captions only unless you record a voice or choose a voice with a suitable license.
+- The benchmark's video condition ran on labelled stand-in clips (`bench/videos/standin/`, simulator renders of the
+  reference programs): 6 of 6 tasks 20/20 on the first try against the reference, against 4 of 6 from the sentence
+  alone. SAM 3.1 agreed on 302/302 decided checks, 38 undecided (from overhead, SAM found no yellow cylinder in 38 of
+  the 40 test-scene clips of tasks 4 and 5). All of those verdicts are passes. Human clips stay a separate condition
+  (`video`), and a human run replaces its task's stand-in in the table.
+- Spend: $10.77 paid of the ~$150 credit (`python -m showtell cost`).
+- Code public at https://github.com/nikocallas/show-and-tell-robotics. Hosted demo at
+  https://show-and-tell-robotics.vercel.app (Vercel project `show-and-tell-robotics`, team `laymen`, deployed from
+  `web/` with the CLI; production domain public, no backend). The repo and the hosted demo lag behind this package
+  until you say to push and redeploy.
+- If you film: `check-videos` → `bench --conditions video` → re-export → redeploy; `docs/demo_script.md` has the steps.
 
 ## Verified API facts (from `https://dev.meta.ai/docs/*.md`, fetched 2026-10-31)
 
@@ -84,8 +89,8 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
   job: both bin tracks dropped, 8x and 10x the median object box).
 - Task 3 never fails on the first try with this model: Wonder's program uses `avoid(glass)` every time. Even
   with the glass left out of the sentence ("Sort by size: big ones in the left bowl, small ones in the right
-  bowl." on the task-3 scene), the spec added untouched/upright checks for fragile objects on its own and the
-  program avoided them: 20/20, nothing touched the glass; re-testing that program after adding "and don't touch
+  bowl." on the task-3 scene), the spec added untouched/upright checks for fragile objects, following the prompt's
+  rule for them, and the program avoided them: 20/20, nothing touched the glass; re-testing that program after adding "and don't touch
   the glass" also passed 20/20 (jobs `rulechange-a/b-155206`, $0.11). Tightening the randomizer band cannot
   change this (the program avoids the glass in every layout), so the planned "naive program hits the glass"
   moment does not happen naturally on task 3.
@@ -170,12 +175,18 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     downloads; POST needs a token (or comes from this machine) and paid jobs stop at `SHOWTELL_BUDGET_USD`.
   - Web (`web/`): new task, live job (spec card, attempt timeline, 20-scene grid, program diff, verified badge,
     downloads), runs, benchmark, demo mode replaying `web/public/demo/`. 49 API tests; type-check and build pass.
-- **Phase 7 — Benchmark**: **half done**; the video condition is **blocked on the human videos**.
-  - `python -m showtell bench` ran all six tasks; the video condition records "no video" and re-runs once the
-    files exist (resumable). Sentence only, scored against the reference checks: tasks 1, 2, 4, 5 20/20; task 3
-    0/20 (bins reversed: small → left); task 6 0/20 (green → middle instead of right) after one real repair.
-    Total $0.42. `bench/results.{json,md}` and the README table are generated from these runs.
-- **Phase 8 — Demo mode, polish, deploy**: in progress.
+- **Phase 7 — Benchmark**: **done on stand-in clips**; the human condition is still **blocked on the human videos**.
+  - `python -m showtell bench` ran all six tasks. Sentence only, scored against the reference checks: tasks 1, 2, 4, 5
+    20/20; task 3 0/20 (bins reversed: small → left); task 6 0/20 (green → middle instead of right) after one real
+    repair. Total $0.42. `bench/results.{json,md}` and the README table are generated from these runs.
+  - Stand-in condition (2026-11-03, `bench/make_standins.py`, `--conditions standin`): every task 20/20 on the first
+    try, no repairs. $7.94 at list price, $6.02 paid (task 3 repeated an earlier stand-in run from the cache; its
+    render is byte-identical to that clip). Runs with fresh API calls took 2.5 to 3.6 minutes (task 3's cached replay
+    2.0). Muse Wonder read the right bins from the
+    clip even where the track summary was wrong (SAM finds no bowls in the render, so end positions fall back to
+    frame thirds): on task 6 the summary has green in the middle third, the spec's rationale says the right bin.
+- **Phase 8 — Demo mode, polish, deploy**: done with the task-6 run; the stand-in results and the video reach the
+  hosted site with the next redeploy.
   - `showtell export-demo --job 20261031-154240-8ca2da` → `web/public/demo/` (17.4 MB); the Runs page and the
     replay work in demo mode (`?demo=1`) with media served from the bundle.
   - A 720p hero render is about 2 MB per scene (44 s), about 40 MB per 20-scene attempt.
@@ -201,10 +212,23 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     the sentence-only repair and explains "no video" and list-price cost. The exported bundle carries no local
     paths. A second, independent review of these changes (live-mode regression run, web and Python code review)
     found 24 issues, all fixed and tested (see Current state).
-- **Phase 9 — Submission assets**: drafts done; numbers that need the human videos are marked [pending].
-  - `docs/demo_script.md`: under 3 minutes, built around the real task-6 failure → diagnosis → repair, with a
-    decide-once plan for which run fills the repair segment after filming (never re-run to fish for a failure).
-  - `docs/submission.md`: the write-up, every number sourced in a comment block at the end.
+- **Phase 9 — Submission assets**: **done**, with stand-in clips in place of the human demos, and captions only until
+  you choose a voice.
+  - `demo_video/`: builds the video with no editor. Real web app in headless Chrome, a real job on the local backend
+    (Wonder and SAM from the cache of the stand-in run), a replay of the recorded repair run, 1080p robot footage
+    whose outcomes are checked on every build (the naive program on seed 3018, Muse Wonder's program on the same seed,
+    the first program on seed 6004). The recorded run's numbers, the benchmark counts and the cost range are read from
+    the run data and asserted; the naive program's 19 of 20 is guarded by the Phase 2 gate. Captions are timed with a
+    macOS voice that is not published. A draft's audio, read back by Muse Voice Transcribe, came back almost word for word.
+  - Two independent audits (workflows, 2026-11-03) re-checked the package against the data and the frames. Fixed: the macOS voice licence problem, the missing `--voiceover` flag, "human demo shows"
+    wording where none exists, overclaims about what surprised us (the fragile-object checks follow our own prompt; the
+    reach limit was named in the error), the true cause of the 38 undecided checks, cache effects on times, on-screen
+    labels and overlays, white flashes at three cards, two washed-out clips, and a figure that was quoted as Julie Shah's
+    words but is the MIT Sloan writer's.
+  - Fixed along the way: the scene dialog's backdrop sat 24 px too low because its parent's `space-y` gave it a margin.
+  - `docs/demo_script.md`: generated shot list, what is real, how to swap in your voice or a filmed clip.
+  - `docs/submission.md`: the write-up, every number sourced in a comment block at the end. `docs/submission_form.md`:
+    paste-ready answers.
   - README audited against the code and artifacts (judge qualified, status note, pinned Menagerie commit,
     Docker flags, limitations).
   - Fresh clone (2026-11-03, Phase 9 acceptance without an API key): the public repo, set up by following

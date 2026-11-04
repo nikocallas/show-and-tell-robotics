@@ -304,6 +304,8 @@ export interface BenchCondition {
   own_final: PassValue;
   repairs: number | null;
   cost_usd: number | null;
+  /** What was billed: 0 when every response came from the local cache. */
+  paid_usd: number | null;
   wall_s: number | null;
   agreement_pct: number | null;
   spec: TaskSpec | null;
@@ -319,9 +321,13 @@ export interface BenchRow {
   repairs?: number | string | null;
   final_sentence_only?: PassValue;
   judge_agreement?: number | string | null; // "93%" (or a fraction / percent number)
+  /** Checks SAM could not decide (it did not find an object); not counted in the agreement. */
+  judge_undecided?: number | null;
   cost_usd?: number | string | null; // both conditions
   time_s?: number | string | null; // the video + sentence run
   video?: BenchCondition | null;
+  /** The video columns come from a stand-in clip (a simulator render), not a human demo. */
+  video_is_standin?: boolean;
   sentence?: BenchCondition | null;
 }
 

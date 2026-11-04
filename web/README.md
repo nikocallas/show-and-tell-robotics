@@ -121,7 +121,7 @@ page shows the final report directly.
 - `GET /api/jobs/{id}/report.md`, `/report.json`, `/program.py`
 - `GET /api/tasks` -> `[{id, index, rules, objects, demo, video, has_video}]`
 - `GET /api/bench` -> `bench/results.json` as `bench/run_bench.py` writes it (`{tasks: {<task_id>:
-  {video, sentence}}, updated_at, n_seeds}`); `src/lib/bench.ts` turns it into the same cells as
+  {video, standin, sentence}}, updated_at, n_seeds}`); `src/lib/bench.ts` turns it into the same cells as
   `bench/results.md`
 - `/media/...` videos; relative paths from events/reports are requested as `/media/jobs/<id>/<path>`
 
@@ -131,8 +131,8 @@ With a separate API origin the backend must allow CORS for the web origin (inclu
 
 1. Import the repo in Vercel and set **Root Directory** to `web` (framework preset: Vite).
 2. `web/vercel.json` sets `npm ci`, `npm run build` and `dist`, and rewrites every path to
-   `index.html` except `/demo/*` and `/assets/*`, so a missing demo file is a real 404 instead of the
-   app's HTML.
+   `index.html` except `/demo/*`, `/video/*`, `/assets/*`, the favicon and the preview image, so a
+   missing demo file or video is a real 404 instead of the app's HTML.
 3. Export the demo job into `web/public/demo/` and commit it (videos included; keep the bundle
    small: 640x480 judge clips, 720p hero clips).
 4. Optional: set `VITE_API_URL` in the project's environment variables so `?live=1` can reach a live

@@ -1,9 +1,13 @@
-"""Benchmark: every task twice (video + sentence, sentence only) on the same seeds.
+"""Benchmark: every task with a demo video + sentence and with the sentence only, on the same seeds.
+
+The demo video is the human one (`video`, bench/videos/) or, where that is not filmed, a labelled
+simulator render (`standin`, bench/videos/standin/, see bench/make_standins.py). The two are kept
+apart in results.json; the table's video columns show the human run when there is one.
 
 Writes bench/results.json and bench/results.md and refreshes the README table. Resumable: a
 (task, condition) already in results.json is skipped. Pass rates are scored against each task's
-hand-written reference checks in bench/tasks.yaml (what the human demo shows); the pipeline itself
-only ever sees its own generated spec.
+hand-written reference checks in bench/tasks.yaml (what the human demo is to show); the pipeline
+itself only ever sees its own generated spec.
 
     python -m showtell bench [--tasks task01_size,task03_size_glass] [--seeds 20] [--no-judge]
     python bench/run_bench.py --tasks task03_size_glass
@@ -14,15 +18,18 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))  # for `python bench/run_bench.py`: only showtell is installed
 RESULTS_JSON = ROOT / "bench" / "results.json"
 RESULTS_MD = ROOT / "bench" / "results.md"
 README = ROOT / "README.md"
-CONDITIONS = ("video", "sentence")
+CONDITIONS = ("video", "standin", "sentence")
+CONDITION_LABEL = {"video": "video", "standin": "stand-in video", "sentence": "sentence only"}
 COLUMNS = [
     "Task",
     "First try (video)",
@@ -59,21 +66,25 @@ def reference_rate(task, program_source: str, seeds: list[int]) -> tuple[int, in
 
 
 def run_condition(task, condition: str, n_seeds: int, use_judge: bool) -> dict[str, Any]:
+    from bench.make_standins import standin_path
     from showtell.contracts import JobConfig
     from showtell.pipeline import resolve_seeds, run_job
 
-    video = ROOT / "bench" / "videos" / task.video
-    if condition == "video" and not video.exists():
+    video = (
+        standin_path(task.id) if condition == "standin" else ROOT / "bench" / "videos" / task.video
+    )
+    uses_video = condition != "sentence"
+    if uses_video and not video.exists():
         return {"status": "missing_video", "video": str(video.relative_to(ROOT))}
     job_id = f"bench-{task.id}-{condition}-{time.strftime('%Y%m%d-%H%M%S')}"
     config = JobConfig(
         job_id=job_id,
         rules_text=task.rules,
-        video_path=video if condition == "video" else None,
-        use_video=condition == "video",
+        video_path=video if uses_video else None,
+        use_video=uses_video,
         task_id=task.id,
         n_seeds=n_seeds,
-        use_judge=use_judge and condition == "video",
+        use_judge=use_judge and uses_video,
     )
     t0 = time.time()
     report = run_job(config)
@@ -88,6 +99,7 @@ def run_condition(task, condition: str, n_seeds: int, use_judge: bool) -> dict[s
             for a in report.attempts
         ],
         "cost_usd": report.cost.usd,
+        "paid_usd": report.cost.paid_usd,
         "wall_s": round(time.time() - t0, 1),
         "agreement_pct": report.agreement.pct if report.agreement else None,
         "agreement": report.agreement.model_dump() if report.agreement else None,
@@ -100,6 +112,17 @@ def run_condition(task, condition: str, n_seeds: int, use_judge: bool) -> dict[s
         out["ref_final"] = list(reference_rate(task, final, seeds))
         out["final_program"] = final
     return out
+
+
+def video_entry(conds: dict[str, Any]) -> tuple[dict | None, bool]:
+    """What the video columns show, and whether it is a stand-in: the human demo's run if it ran,
+    else the stand-in clip's run, else the human entry (which says "no video")."""
+    human, standin = conds.get("video"), conds.get("standin")
+    if human and human.get("status") != "missing_video":
+        return human, False
+    if standin and standin.get("status") != "missing_video":
+        return standin, True
+    return human, False
 
 
 def _rate(entry: dict | None, key: str) -> str:
@@ -118,7 +141,9 @@ def _agreement(entry: dict | None) -> str:
     stats = (entry or {}).get("agreement") or {}
     agree, n = stats.get("agree"), stats.get("n")
     if n:
-        return f"{min(round(100 * agree / n), 99 if agree < n else 100)}%"
+        pct = f"{min(round(100 * agree / n), 99 if agree < n else 100)}%"
+        undecided = stats.get("undecided") or 0
+        return f"{pct} ({undecided} undecided)" if undecided else pct
     pct = (entry or {}).get("agreement_pct")
     return "—" if pct is None else f"{min(round(pct), 99) if pct < 100 else 100}%"
 
@@ -132,6 +157,16 @@ def _sentence_cell(entry: dict | None) -> str:
     return cell
 
 
+def fully_cached_runs(results: dict[str, Any]) -> str:
+    """Runs that were billed nothing because every response came from the local cache."""
+    return ", ".join(
+        f"{task_id} {CONDITION_LABEL[cond]}"
+        for task_id, conds in results.get("tasks", {}).items()
+        for cond in CONDITIONS
+        if (conds.get(cond) or {}).get("paid_usd") == 0
+    )
+
+
 def own_check_gaps(results: dict[str, Any]) -> list[str]:
     """One line per run whose final program's pass count on its own generated checks differs
     from its pass count on the reference checks (the spec it wrote is not what the demo shows)."""
@@ -142,11 +177,10 @@ def own_check_gaps(results: dict[str, Any]) -> list[str]:
             attempts, ref = e.get("attempts") or [], e.get("ref_final")
             if not attempts or not ref or attempts[-1]["passed"] == ref[0]:
                 continue
-            label = "sentence only" if cond == "sentence" else "video"
             own = f"{attempts[-1]['passed']}/{attempts[-1]['total']}"
             lines.append(
-                f"- {task_id} ({label}): {own} on its own checks, {ref[0]}/{ref[1]} on the "
-                "reference checks."
+                f"- {task_id} ({CONDITION_LABEL[cond]}): {own} on its own checks, "
+                f"{ref[0]}/{ref[1]} on the reference checks."
             )
     return lines
 
@@ -154,13 +188,15 @@ def own_check_gaps(results: dict[str, Any]) -> list[str]:
 def table_rows(results: dict[str, Any]) -> list[list[str]]:
     rows = []
     for task_id, conds in results.get("tasks", {}).items():
-        v, s = conds.get("video"), conds.get("sentence")
+        s = conds.get("sentence")
+        v, stand_in = video_entry(conds)
+        mark = " (stand-in)" if stand_in else ""
         cost = sum(float(c.get("cost_usd") or 0) for c in (v, s) if c)
         rows.append(
             [
                 task_id,
-                _rate(v, "ref_first"),
-                _rate(v, "ref_final"),
+                _rate(v, "ref_first") + mark,
+                _rate(v, "ref_final") + mark,
                 str(v["repairs"]) if v and "repairs" in v else "—",
                 _sentence_cell(s),
                 _agreement(v),
@@ -176,20 +212,36 @@ def results_markdown(results: dict[str, Any]) -> str:
     lines = ["| " + " | ".join(COLUMNS) + " |", "|" + "---|" * len(COLUMNS)]
     lines += ["| " + " | ".join(r) + " |" for r in rows]
     n = results.get("n_seeds") or 20
+    no_video = any("no video" in cell for r in rows for cell in r)
+    cached = fully_cached_runs(results)
     lines += [
         "",
         f"Pass rates are k/{n} randomized scenes, scored against each task's reference checks "
-        "(bench/tasks.yaml), which encode what each task's demo video shows (the shot list in "
-        "bench/videos/README.md): a run can pass every check in the spec it generated and still "
-        "score lower here. First try = the first generated "
+        "(bench/tasks.yaml), which encode what each task's demo video is to show (the shot list "
+        "in bench/videos/README.md): a run can pass every check in the spec it generated and "
+        "still score lower here. First try = the first generated "
         "program; Final = after up to 3 repairs (sentence-only repairs in brackets). Sentence "
         "only = the same pipeline without the demo video and without the SAM judge (simulator "
-        'ground truth only). "no video" = the human demo video for the task is not recorded '
-        "yet, so the video condition has not run. Judge agreement = SAM 3.1 on the rendered "
-        "clips vs simulator ground truth (video condition). Cost $ = list price of the Meta API "
+        "ground truth only). "
+        + (
+            '"no video" = the human demo video for the task is not recorded yet, so the video '
+            "condition has not run. "
+            if no_video
+            else ""
+        )
+        + '"(stand-in)" = the human demo is not filmed, '
+        "so that run used a stand-in clip instead: a top-down simulator render of the task's "
+        "reference program (bench/make_standins.py), not a recording of a person. It tests "
+        "whether Muse Wonder reads the mapping from a demonstration, not how the pipeline copes "
+        "with a phone video. Judge agreement = SAM 3.1 on the rendered "
+        "clips vs simulator ground truth (video condition), over the checks SAM could decide; "
+        "undecided = SAM did not find an object the check needs, never counted as "
+        "agreement. Cost $ = list price of the Meta API "
         "calls each run made, summed over the conditions that ran; responses served from the "
-        "local cache are counted at list price but billed $0. Repairs and Time = the video "
-        "condition.",
+        "local cache are counted at list price but billed $0, and take no API time, so a cached "
+        "run's Time is shorter"
+        + (f" (fully cached here: {cached})" if cached else "")
+        + ". Repairs and Time = the video condition.",
     ]
     gaps = own_check_gaps(results)
     if gaps:
@@ -210,8 +262,19 @@ def update_readme(md_table: str, readme: Path = README) -> bool:
     return True
 
 
+def write_tables(results: dict[str, Any]) -> str:
+    """bench/results.md and the README table from results.json's data."""
+    md = results_markdown(results)
+    RESULTS_MD.write_text("# Benchmark results\n\n" + md)
+    update_readme(md)
+    return md
+
+
 def main(
-    tasks: list[str] | None = None, n_seeds: int = 20, use_judge: bool = True
+    tasks: list[str] | None = None,
+    n_seeds: int = 20,
+    use_judge: bool = True,
+    conditions: tuple[str, ...] = CONDITIONS,
 ) -> dict[str, Any]:
     from showtell.sim.scene import load_tasks
 
@@ -227,17 +290,14 @@ def main(
     for task_id in wanted:
         task = all_tasks[task_id]
         entry = results["tasks"].setdefault(task_id, {})
-        for cond in CONDITIONS:
+        for cond in conditions:
             if cond in entry and entry[cond].get("status") not in ("missing_video", "error"):
                 print(f"skip {task_id}/{cond} (done)")
                 continue
             print(f"run {task_id}/{cond} ...", flush=True)
             entry[cond] = run_condition(task, cond, n_seeds, use_judge)
             save_results(results)
-    md = results_markdown(results)
-    RESULTS_MD.write_text("# Benchmark results\n\n" + md)
-    update_readme(md)
-    print(md)
+    print(write_tables(results))
     return results
 
 
@@ -246,5 +306,11 @@ if __name__ == "__main__":
     ap.add_argument("--tasks", default=None, help="comma-separated task ids")
     ap.add_argument("--seeds", type=int, default=20)
     ap.add_argument("--no-judge", action="store_true")
+    ap.add_argument("--conditions", default=",".join(CONDITIONS))
     a = ap.parse_args()
-    main(a.tasks.split(",") if a.tasks else None, a.seeds, not a.no_judge)
+    main(
+        a.tasks.split(",") if a.tasks else None,
+        a.seeds,
+        not a.no_judge,
+        tuple(a.conditions.split(",")),
+    )

@@ -43,6 +43,10 @@ ignore = ["SIM108", "B008"]  # B008: typer/FastAPI declare options as call defau
 [tool.ruff.lint.per-file-ignores]
 "examples/**" = ["F821"]  # robot programs: the skills are injected by the sandbox
 "showtell/agent/prompts.py" = ["E501"]  # prompt templates keep one sentence per line
+"demo_video/script.py" = ["E501"]  # narration keeps one sentence per line
+"demo_video/cards.py" = ["E501"]  # HTML and CSS
+"demo_video/compose.py" = ["E501"]  # CSS
+"demo_video/cdp.py" = ["E501"]  # JavaScript injected into the page
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

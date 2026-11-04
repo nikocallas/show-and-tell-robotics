@@ -2,7 +2,7 @@
 
 import { Link } from "react-router-dom";
 import { recentJobs } from "../api";
-import { FIXTURE_LABEL, IS_FIXTURE, LIVE_AVAILABLE } from "../config";
+import { FIXTURE_LABEL, IS_FIXTURE, LIVE_AVAILABLE, VIDEO_URL } from "../config";
 import { featuredRun, loadDemoBench, loadDemoRuns, type DemoRun } from "../demo";
 import { useAsync } from "../hooks";
 import { conditionRan } from "../lib/bench";
@@ -130,6 +130,9 @@ function Hero({ featured }: { featured: DemoRun | null }) {
               : "Watch a recorded run"}
           </Link>
         )}
+        <a href={VIDEO_URL} className={buttonClass("secondary", "md")}>
+          Demo video
+        </a>
         <Link to="/bench" className={buttonClass("secondary", "md")}>
           Benchmark <IconArrowRight size={15} />
         </Link>
@@ -146,9 +149,10 @@ export function DemoIndexPage() {
   const recent = mode === "live" ? recentJobs() : [];
   const runs = runsData.data ?? [];
   const demo = mode === "demo";
-  // bench/results.json says "missing_video" for every task until the human demos are recorded.
+  // Human demos: bench/results.json says "missing_video" for every task until they are recorded.
   const benchRows = bench.data?.tasks ?? [];
-  const videoPending = benchRows.length > 0 && benchRows.every((row) => !conditionRan(row.video));
+  const noHumanVideo = benchRows.length > 0 && benchRows.every((row) => !conditionRan(row.video) || row.video_is_standin);
+  const standIns = benchRows.some((row) => row.video_is_standin);
 
   return (
     <div className="space-y-8">
@@ -165,10 +169,11 @@ export function DemoIndexPage() {
             Complete runs of the pipeline, replayed in the browser from their recorded events: the spec,
             every test scene and, when a scene failed, the diagnosis and the repair. No backend needed.
           </p>
-          {videoPending && (
+          {noHumanVideo && (
             <p className="mt-1.5 max-w-2xl text-xs text-zinc-500">
               The human demo videos are not recorded yet, so the benchmark's video + sentence condition
-              has not run. Each run below says what it was made from.
+              {standIns ? " ran on stand-in clips: simulator renders, not recordings of a person." : " has not run."}{" "}
+              Each run below says what it was made from.
             </p>
           )}
         </div>

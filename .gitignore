@@ -9,9 +9,16 @@ __pycache__/
 # Secrets
 .env
 
+# Private notes
+*.local.md
+
 # Local caches and run output (paid API responses, renders, job DBs)
 cache/
 data/
+
+# Demo video build output (the final cut is copied to web/public/ when it is published)
+demo_video/build/
+demo_video/out/
 
 # Third-party checkouts (cloned by setup; see README)
 third_party/

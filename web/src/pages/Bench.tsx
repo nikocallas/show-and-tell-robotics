@@ -38,11 +38,11 @@ const COST_HINT =
 /** bench/results.md's columns, used once the video + sentence condition has results. */
 const COLUMNS: { key: string; label: string; hint: string }[] = [
   { key: "task", label: "Task", hint: "Benchmark task and its rule sentence" },
-  { key: "first_try_video", label: "First try (video)", hint: "Scenes passed by the first program, video + sentence" },
-  { key: "final_video", label: "Final (video)", hint: "Scenes passed after repairs, video + sentence" },
+  { key: "first_try_video", label: "First try (video)", hint: "Scenes passed by the first program, video + sentence (marked when the video is a stand-in clip)" },
+  { key: "final_video", label: "Final (video)", hint: "Scenes passed after repairs, video + sentence (marked when the video is a stand-in clip)" },
   { key: "repairs", label: "Repairs", hint: "Repair rounds used by the video + sentence run (max 3)" },
   { key: "final_sentence_only", label: "Final (sentence only)", hint: "Scenes passed after repairs, sentence only (no video)" },
-  { key: "judge_agreement", label: "Judge agreement", hint: "SAM 3.1 verdicts vs simulator ground truth" },
+  { key: "judge_agreement", label: "Judge agreement", hint: "SAM 3.1 verdicts vs simulator ground truth, over the checks SAM could decide" },
   { key: "cost_usd", label: "Cost $", hint: `${COST_HINT}; sum of the conditions that ran` },
   { key: "time_s", label: "Time", hint: "Wall-clock time of the video + sentence run" },
 ];
@@ -86,6 +86,18 @@ function PassCell({ value, children }: { value: PassValue; children?: ReactNode 
       </div>
       {children}
     </div>
+  );
+}
+
+/** On every video-column value that came from a simulator render instead of a human demo. */
+function StandInMark() {
+  return (
+    <span
+      className="mt-0.5 block text-[11px] font-medium text-amber-700"
+      title="A top-down simulator render of the task's reference program, not a recording of a person"
+    >
+      stand-in clip
+    </span>
   );
 }
 
@@ -239,10 +251,11 @@ function BenchTable({ rows }: { rows: BenchRow[] }) {
               <tr key={r.task} className="align-top hover:bg-zinc-50/60">
                 <TaskCell row={r} />
                 <td className="px-4 py-3">
-                  <PassCell value={r.first_try_video} />
+                  <PassCell value={r.first_try_video}>{r.video_is_standin && <StandInMark />}</PassCell>
                 </td>
                 <td className="px-4 py-3">
                   <PassCell value={r.final_video}>
+                    {r.video_is_standin && <StandInMark />}
                     {scoresLower(r.video) && <WhyLink target={noteId(r.task, "video")} />}
                   </PassCell>
                 </td>
@@ -260,9 +273,27 @@ function BenchTable({ rows }: { rows: BenchRow[] }) {
                 </td>
                 <td className="px-4 py-3 tabular-nums text-zinc-900">
                   {formatPct(agreementPct(r.judge_agreement))}
+                  {r.judge_undecided ? (
+                    <span
+                      className="mt-0.5 block text-[11px] text-zinc-500"
+                      title="Checks SAM could not decide because it did not find an object; not counted in the agreement"
+                    >
+                      {r.judge_undecided} undecided
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3 tabular-nums text-zinc-900">{formatUsd(r.cost_usd)}</td>
-                <td className="px-4 py-3 tabular-nums text-zinc-900">{formatDuration(num(r.time_s))}</td>
+                <td className="px-4 py-3 tabular-nums text-zinc-900">
+                  {formatDuration(num(r.time_s))}
+                  {r.video?.paid_usd === 0 && (
+                    <span
+                      className="mt-0.5 block text-[11px] text-zinc-500"
+                      title="Every model response in this run came from the local cache, so it took no API time"
+                    >
+                      from cache
+                    </span>
+                  )}
+                </td>
               </tr>
             );
           })}
@@ -311,7 +342,7 @@ function LowerNotes({
         <h2 className="text-sm font-semibold text-zinc-900">Why some runs score lower here than on their own page</h2>
         <p className="mt-0.5 max-w-3xl text-xs text-zinc-500">
           Each run's own spec decides pass and fail on its run page, where it can be VERIFIED. This table
-          scores the same programs against the reference checks, which encode the human demo.
+          scores the same programs against the reference checks, which encode what the human demo is to show.
         </p>
       </div>
       <ul className="grid gap-3 lg:grid-cols-2">
@@ -326,7 +357,9 @@ function LowerNotes({
             >
               <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="font-mono text-xs font-medium text-zinc-900">{row.task}</span>
-                <span className="text-xs text-zinc-500">{key === "video" ? "video + sentence" : "sentence only"}</span>
+                <span className="text-xs text-zinc-500">
+                  {key !== "video" ? "sentence only" : row.video_is_standin ? "stand-in video + sentence" : "video + sentence"}
+                </span>
               </p>
               <p className="mt-1.5 text-zinc-800">
                 Own spec <span className="font-medium tabular-nums text-emerald-700">{passText(run.own_final)}</span>
@@ -337,14 +370,18 @@ function LowerNotes({
                 {run.spec && run.spec.rules.length > 0 && (
                   <div>
                     <dt className="font-medium text-zinc-500">
-                      {key === "video" ? "Spec written from the video and the sentence" : "Spec written from the sentence alone"}
+                      {key !== "video"
+                        ? "Spec written from the sentence alone"
+                        : row.video_is_standin
+                          ? "Spec written from the stand-in video and the sentence"
+                          : "Spec written from the video and the sentence"}
                     </dt>
                     <dd className="mt-0.5 text-zinc-800">{run.spec.rules.map(ruleShort).join(" · ")}</dd>
                   </div>
                 )}
                 {preset?.demo && (
                   <div>
-                    <dt className="font-medium text-zinc-500">What the human demo shows (the reference)</dt>
+                    <dt className="font-medium text-zinc-500">What the human demo is to show (the reference)</dt>
                     <dd className="mt-0.5 text-zinc-800">{preset.demo}</dd>
                   </div>
                 )}
@@ -394,13 +431,14 @@ export function BenchPage() {
   const rows = data?.tasks ?? [];
   const videoRan = rows.some((r) => conditionRan(r.video));
   const videoMissing = rows.length > 0 && rows.every((r) => r.video?.status === "missing_video");
+  const standInRows = rows.filter((r) => r.video_is_standin).length;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">Benchmark</h1>
         <p className="mt-1.5 max-w-3xl text-sm text-zinc-600">
-          Each task runs on the same fixed seeds in two conditions: the demo video plus the sentence, and
+          Each task runs on the same fixed seeds in two conditions: a demo video plus the sentence, and
           the sentence alone. A scene passes only if every reference check for the task
           (bench/tasks.yaml) passes in the simulator.
         </p>
@@ -443,15 +481,25 @@ export function BenchPage() {
               alone, without any video.
             </Banner>
           )}
+          {standInRows > 0 && (
+            <Banner
+              tone="warning"
+              title={standInRows === rows.length ? "The video columns use stand-in clips" : "Marked rows use stand-in clips"}
+            >
+              A stand-in clip is a top-down simulator render of the task's reference program, not a recording of
+              a person: the human demos for these rows are not filmed yet. These rows test whether Muse Wonder reads the
+              bin mapping from a demonstration, not how the pipeline copes with a phone video.
+            </Banner>
+          )}
           {videoRan ? <BenchTable rows={rows} /> : <SentenceTable rows={rows} />}
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-500">
             {data.n_seeds ? <span>{data.n_seeds} seeds per attempt</span> : null}
             {generated != null && <span>Updated {formatDateTime(generated)}</span>}
             <span className="max-w-4xl">
               Pass rates are scenes passed, scored against each task's reference checks (bench/tasks.yaml),
-              which encode what the human demo shows. First try is the first generated program; Final is
-              after up to 3 repairs. The sentence-only condition runs without the SAM judge. A run can pass
-              every check of its own spec, and show VERIFIED on its run page, while scoring lower here:
+              which encode what the human demo is to show. First try is the first generated program; Final
+              is after up to 3 repairs. The sentence-only condition runs without the SAM judge. A run can
+              pass every check of its own spec, and show VERIFIED on its run page, while scoring lower here:
               written without the video, its spec can put objects in different bins than the demo. The
               own-spec score is each run's result on its own checks.
             </span>

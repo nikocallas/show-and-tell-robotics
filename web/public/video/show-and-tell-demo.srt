@@ -1,0 +1,175 @@
+1
+00:00:00,300 --> 00:00:02,156
+This program looks correct.
+
+2
+00:00:02,276 --> 00:00:06,018
+It also knocks over the glass in 19 of 20 random layouts.
+
+3
+00:00:06,918 --> 00:00:10,079
+Telling a robot what to do still means writing a program,
+
+4
+00:00:10,079 --> 00:00:13,185
+and the person who knows the task usually can't read it.
+
+5
+00:00:13,305 --> 00:00:15,593
+Show and Tell Robotics changes that.
+
+6
+00:00:16,093 --> 00:00:21,207
+You show the task once on video, and say the rule in one sentence: sort by color,
+
+7
+00:00:21,207 --> 00:00:23,480
+but blue things stay where they are.
+
+8
+00:00:23,600 --> 00:00:26,928
+Here, a simulator render stands in for the phone clip.
+
+9
+00:00:27,428 --> 00:00:29,892
+Muse Wonder names the objects on the table.
+
+10
+00:00:30,292 --> 00:00:35,587
+SAM 3.1 tracks each one: what moved, in what order, and what stayed put.
+
+11
+00:00:36,087 --> 00:00:40,752
+Before any code exists, Muse Wonder watches the video and writes the tests:
+
+12
+00:00:40,752 --> 00:00:44,670
+red ends in the left bin, green in the right, blue never moves.
+
+13
+00:00:44,790 --> 00:00:47,103
+You read them, edit them, approve.
+
+14
+00:00:47,503 --> 00:00:50,926
+Then it writes a short program out of tested robot skills.
+
+15
+00:00:51,326 --> 00:00:56,403
+It runs on 20 randomized scenes in MuJoCo, with a simulated Franka arm.
+
+16
+00:00:56,523 --> 00:00:59,229
+This one passes all 20 on the first try.
+
+17
+00:00:59,729 --> 00:01:02,098
+So what happens when a scene fails?
+
+18
+00:01:02,218 --> 00:01:06,784
+In this recorded run, from the sentence alone, 19 scenes pass.
+
+19
+00:01:07,184 --> 00:01:10,498
+In scene 6004, the program stops after the lift:
+
+20
+00:01:10,498 --> 00:01:15,744
+its detour around a blue cube is out of reach, so the arm lets go and parks.
+
+21
+00:01:16,444 --> 00:01:20,743
+Muse Wonder gets the failed checks, the error and eight frames from that scene.
+
+22
+00:01:21,143 --> 00:01:22,843
+Its diagnosis, word for word:
+
+23
+00:01:22,843 --> 00:01:28,531
+Avoiding the blue cubes forced an unreachable over-the-blue waypoint while carrying the red cube,
+
+24
+00:01:28,531 --> 00:01:30,759
+aborting the program before placement.
+
+25
+00:01:31,259 --> 00:01:32,653
+The patch drops the detour:
+
+26
+00:01:32,653 --> 00:01:36,008
+the blue cubes are low enough for the arm's normal travel height.
+
+27
+00:01:36,508 --> 00:01:40,343
+All 20 scenes run again. 20/20: verified.
+
+28
+00:01:40,843 --> 00:01:46,629
+Every scene also gets a second judge: SAM 3.1, looking only at the rendered video.
+
+29
+00:01:46,749 --> 00:01:51,615
+It agreed with the simulator on all 120 checks, the failure included.
+
+30
+00:01:51,615 --> 00:01:53,590
+The simulator still decides.
+
+31
+00:01:54,090 --> 00:01:58,887
+Why the video? From the sentence alone, four of six tasks match our reference:
+
+32
+00:01:58,887 --> 00:02:02,638
+where the sentence doesn't name the bin, Wonder has to guess.
+
+33
+00:02:02,758 --> 00:02:06,506
+The run you just saw is a miss: it guessed the middle bin for green.
+
+34
+00:02:06,626 --> 00:02:12,294
+With a stand-in clip, six of six match, on the first try. Human clips are next.
+
+35
+00:02:12,794 --> 00:02:18,081
+And the glass? On that same layout, Muse Wonder's program lifts above it and goes around.
+
+36
+00:02:18,201 --> 00:02:21,768
+Every program it has written for that task avoids the glass.
+
+37
+00:02:22,268 --> 00:02:26,370
+Muse Wonder does four jobs here, and SAM 3.1 does two.
+
+38
+00:02:26,490 --> 00:02:31,095
+Generated code runs in a sandbox, pass or fail comes from physics,
+
+39
+00:02:31,095 --> 00:02:35,143
+and a verified task costs one to two dollars in API calls.
+
+40
+00:02:35,643 --> 00:02:41,567
+Integration generally runs four to five times the cost of the robot, says MIT's Julie Shah.
+
+41
+00:02:41,687 --> 00:02:47,160
+We want the person who knows the job to change it: one demonstration, one sentence,
+
+42
+00:02:47,160 --> 00:02:48,215
+one test report.
+
+43
+00:02:48,715 --> 00:02:52,491
+It runs in simulation today. Next is a pilot on a real arm,
+
+44
+00:02:52,491 --> 00:02:55,243
+through the same skills and the same tests.

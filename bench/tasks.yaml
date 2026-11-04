@@ -1,5 +1,5 @@
 # Benchmark tasks. Each task lists the sim objects present and a hand-written reference spec that
-# encodes what the human demo video shows. The pipeline never sees `reference`: the benchmark uses it
+# encodes what the human demo video is to show. The pipeline never sees `reference`: the benchmark uses it
 # to score whether the final program does the task the human meant (not just its own generated checks).
 #
 # Object ids: <color>_<shape>_<size>[_n]. Shapes: cube, cylinder, glass. Sizes: small (5 cm cube),

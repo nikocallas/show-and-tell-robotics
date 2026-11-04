@@ -100,7 +100,7 @@ function mergeAgreement(list: (AgreementStats | null)[]): AgreementStats | null 
 
 // ------------------------------------------------------------------ benchmark reference
 interface Reference {
-  condition: "sentence-only" | "video + sentence";
+  condition: "sentence-only" | "video + sentence" | "stand-in video + sentence";
   run: BenchCondition;
   passed: number;
   total: number;
@@ -118,7 +118,7 @@ function benchReference(run: JobState, row: BenchRow | null): Reference | null {
   const program = run.report?.final_program || lastAttempt(run)?.program;
   if (!sameSpec(run.spec, cond.spec) || !sameProgram(program, cond.final_program)) return null;
   return {
-    condition: run.useVideo ? "video + sentence" : "sentence-only",
+    condition: !run.useVideo ? "sentence-only" : row.video_is_standin ? "stand-in video + sentence" : "video + sentence",
     run: cond,
     passed: score.passed,
     total: score.total,
@@ -160,8 +160,8 @@ function ReferenceBox({
             (<span className="break-all font-mono text-[11px]">{reference.run.job_id}</span>)
           </>
         ) : null}{" "}
-        has this spec and final program. Scored against the reference checks, which encode the human
-        demo, it passes {reference.passed} of {reference.total} scenes.
+        has this spec and final program. Scored against the reference checks, which encode what the human
+        demo is to show, it passes {reference.passed} of {reference.total} scenes.
       </p>
       <dl className="mt-2.5 space-y-2 text-xs">
         {spec && spec.rules.length > 0 && (
@@ -172,7 +172,7 @@ function ReferenceBox({
         )}
         {preset?.demo && (
           <div>
-            <dt className="font-medium text-zinc-500">What the human demo shows (the reference)</dt>
+            <dt className="font-medium text-zinc-500">What the human demo is to show (the reference)</dt>
             <dd className="mt-0.5 text-zinc-800">{preset.demo}</dd>
           </div>
         )}
@@ -347,7 +347,7 @@ function DemonstrationCard({
               Muse Wonder wrote the spec from the rule sentence and the list of objects in the scene,
               with no video: the benchmark's sentence-only ablation. Pass and fail on this page use this
               spec's own checks. The Benchmark page scores the same kind of run against reference checks
-              that encode the human demo, where a spec written without the video can score lower.
+              that encode what the human demo is to show, where a spec written without the video can score lower.
             </p>
           ) : (
             <p className="text-sm text-zinc-500">No video is used for this job.</p>
@@ -374,7 +374,7 @@ function DemonstrationCard({
                       : !o.end_bin
                         ? "moved"
                         : thirdsNote
-                          ? `ends in the ${THIRD[o.end_bin] ?? binLabel(o.end_bin)} third`
+                          ? `ends in the frame's ${THIRD[o.end_bin] ?? binLabel(o.end_bin)} third`
                           : `to ${binLabel(o.end_bin)}`}
                   </span>
                 </li>

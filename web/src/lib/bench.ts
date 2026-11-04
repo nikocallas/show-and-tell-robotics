@@ -1,12 +1,14 @@
 /**
  * bench/results.json (written by bench/run_bench.py) -> benchmark table rows.
  *
- * The file is {"tasks": {<task_id>: {"video": Entry, "sentence": Entry}}, "updated_at":
- * "YYYY-MM-DD HH:MM:SS", "n_seeds": 20}. Entry is {job_id, status, error, repairs, attempts:
- * [{n, passed, total, diagnosis}], cost_usd, wall_s, agreement_pct (0-100 or null), spec,
+ * The file is {"tasks": {<task_id>: {"video": Entry, "standin": Entry, "sentence": Entry}},
+ * "updated_at": "YYYY-MM-DD HH:MM:SS", "n_seeds": 20}. Entry is {job_id, status, error, repairs,
+ * attempts: [{n, passed, total, diagnosis}], cost_usd, wall_s, agreement_pct (0-100 or null), spec,
  * final_program, ref_first: [k, n], ref_final: [k, n], ...}, or {status: "missing_video", video}
- * when the demo video was not recorded. The flat cells follow run_bench.table_rows, so the page
- * shows what bench/results.md shows; `video` and `sentence` keep each condition's details.
+ * when the clip does not exist. "video" is the human demo; "standin" a labelled simulator render
+ * (bench/make_standins.py). The flat cells follow run_bench.table_rows, so the page shows what
+ * bench/results.md shows: the video columns use the human run if it ran, else the stand-in run,
+ * with `video_is_standin` set. `video` and `sentence` keep each condition's details.
  */
 
 import type { BenchCondition, BenchResults, BenchRow, PassValue, Rule, Selector, TaskSpec } from "../types";
@@ -56,6 +58,7 @@ function condition(entry: Json | null): BenchCondition | null {
     own_final: ownRate(attempts[attempts.length - 1]),
     repairs: finite(entry.repairs),
     cost_usd: finite(entry.cost_usd),
+    paid_usd: finite(entry.paid_usd),
     wall_s: finite(entry.wall_s),
     agreement_pct: finite(entry.agreement_pct),
     spec: taskSpec(entry.spec),
@@ -65,7 +68,12 @@ function condition(entry: Json | null): BenchCondition | null {
 
 /** One table row from a task's two conditions (run_bench.table_rows). */
 export function benchRow(task: string, conditions: Json): BenchRow {
-  const video = isObj(conditions.video) ? conditions.video : null;
+  const human = isObj(conditions.video) ? conditions.video : null;
+  const standin = isObj(conditions.standin) ? conditions.standin : null;
+  // run_bench.video_entry: the human run if it ran, else the stand-in run, else the human entry.
+  const humanRan = human != null && human.status !== "missing_video";
+  const standinRan = standin != null && standin.status !== "missing_video";
+  const video = humanRan || !standinRan ? human : standin;
   const sentence = isObj(conditions.sentence) ? conditions.sentence : null;
   const present = [video, sentence].filter((c): c is Json => c != null);
   const agreement = video ? finite(video.agreement_pct) : null;
@@ -77,11 +85,13 @@ export function benchRow(task: string, conditions: Json): BenchRow {
     final_sentence_only: rate(sentence, "ref_final"),
     // agreement_pct is already 0-100; the "%" keeps 1 (= 1%) from reading as a fraction.
     judge_agreement: agreement != null ? `${agreement}%` : null,
+    judge_undecided: isObj(video?.agreement) ? finite(video.agreement.undecided) : null,
     cost_usd: present.length
       ? present.reduce((sum, c) => sum + (finite(c.cost_usd) ?? 0), 0)
       : null,
     time_s: video ? finite(video.wall_s) || null : null,
     video: condition(video),
+    video_is_standin: !humanRan && standinRan,
     sentence: condition(sentence),
   };
 }

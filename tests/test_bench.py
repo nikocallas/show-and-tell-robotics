@@ -44,6 +44,54 @@ def test_results_table_has_the_required_columns_and_values() -> None:
     assert "| task02_color | no video |" in md
 
 
+def test_video_columns_show_a_stand_in_run_labelled_and_a_human_run_first() -> None:
+    standin = {
+        "status": "verified",
+        "ref_first": [19, 20],
+        "ref_final": [20, 20],
+        "repairs": 1,
+        "cost_usd": 1.0,
+        "wall_s": 60.0,
+        "agreement_pct": 100.0,
+    }
+    sentence = {"status": "verified", "ref_final": [0, 20], "repairs": 0, "cost_usd": 0.5}
+    human = {**standin, "ref_first": [3, 20], "ref_final": [18, 20], "cost_usd": 2.0}
+    only_standin = {
+        "n_seeds": 20,
+        "tasks": {
+            "task06_color_exc": {
+                "video": {"status": "missing_video"},
+                "standin": standin,
+                "sentence": sentence,
+            }
+        },
+    }
+    row = rb.table_rows(only_standin)[0]
+    assert row[1:3] == ["19/20 (stand-in)", "20/20 (stand-in)"]
+    assert row[6] == "1.50"
+    assert '"(stand-in)" = the human demo is not filmed' in rb.results_markdown(only_standin)
+    both = {
+        "tasks": {"task06_color_exc": {"video": human, "standin": standin, "sentence": sentence}}
+    }
+    row = rb.table_rows(both)[0]
+    assert row[1:3] == ["3/20", "18/20"]  # the human run wins and carries no mark
+    assert row[6] == "2.50"
+
+
+def test_judge_agreement_names_undecided_checks() -> None:
+    entry = {"agreement": {"agree": 21, "n": 21, "undecided": 19}, "agreement_pct": 100.0}
+    assert rb._agreement(entry) == "100% (19 undecided)"
+    assert rb._agreement({"agreement": {"agree": 60, "n": 60, "undecided": 0}}) == "100%"
+
+
+def test_stand_in_file_names_and_seeds_are_labelled_and_outside_the_test_seeds() -> None:
+    from bench.make_standins import standin_path, standin_seed
+
+    assert standin_path("task03_size_glass").name == "standin_task03_size_glass.mp4"
+    assert standin_seed(3) == 3990
+    assert standin_seed(3) not in range(3000, 3020)
+
+
 def test_update_readme_replaces_only_the_marked_block(tmp_path) -> None:
     readme = tmp_path / "README.md"
     readme.write_text("intro\n<!-- bench:start -->\nold\n<!-- bench:end -->\noutro\n")

@@ -1,10 +1,11 @@
 # Show & Tell Robotics
 
-Hackathon write-up · Meta Global AI Developer Hackathon, Startup track · status as of 2026-11-03.
-Every number below comes from a file in this working copy or from `python -m showtell cost`
-(sources at the end). Files under `data/` (the job reports in `data/jobs/`, `data/usage.jsonl`) are
-git-ignored local run output, so a clone will not have them; the two recorded runs are also copied
-into `web/public/demo/`. Anything that waits on the human demo videos is marked **[pending]**.
+Hackathon write-up · Meta Global AI Developer Hackathon, Startup track, theme "Push the Frontier" ·
+status as of 2026-11-03. Every number below comes from a file in this working copy or from
+`python -m showtell cost` (sources at the end). Files under `data/` (the job reports in `data/jobs/`,
+`data/usage.jsonl`) are git-ignored local run output, so a clone will not have them; the three
+recorded runs are also copied into `web/public/demo/`. No human demonstration has been filmed:
+everything marked "stand-in" ran on a simulator render, not a recording of a person.
 
 ## Name and pitch
 
@@ -19,8 +20,24 @@ task-6 program passed 19 of 20 layouts), and because nobody wrote down what "don
 check. Neither input is enough on its own: a
 video shows what happened once, not the rule behind it, and a sentence leaves gaps ("sort by color"
 doesn't say which bowl). Our own benchmark shows the second gap: from the sentence alone, two of six
-tasks ended up sorted into different bowls than the reference mapping the planned demonstration will
-show (see Results).
+tasks ended up sorted into different bowls than our reference mapping, the one the stand-in
+demonstration clips show (see Results).
+
+## Who it's for
+
+Robots are already everywhere: about 542,000 industrial robots were installed in 2024 and about
+4,664,000 are in operation ([IFR, World Robotics 2025](https://ifr.org/ifr-press-releases/news/global-robot-demand-in-factories-doubles-over-10-years)).
+Getting one to do a new job is the expensive part: integration generally runs four to five times the
+cost of the robot, per MIT's Julie Shah as reported by [MIT Sloan in 2021](https://mitsloan.mit.edu/node/29144),
+and every change of part, bin or rule goes back to whoever can write the code.
+
+We build for the people who already know the job: a line lead re-sorting parts, a lab technician, a
+small shop without an integrator, an integrator handing a cell over to the customer's staff. They
+show the change once and say the rule. They read the checks as plain sentences ("All blue objects
+remain where they started on the table.") and approve them before any code exists, and no program
+counts as verified until it has passed them on the randomized test scenes (20 by default). The report and the attempt log
+are what gets handed over. This is a plan for a product, not a shipped one: today it runs in
+simulation only (see What's next).
 
 ## What it does
 
@@ -35,7 +52,7 @@ show (see Results).
    table."). You read it, edit it if needed, and approve it.
 4. **Test.** Muse Wonder writes a short Python program out of tested robot skills. It runs on 20
    randomized MuJoCo scenes with a simulated Franka Panda arm, and the 20-scene grid fills in live.
-5. **Repair.** If any scene fails, Muse Wonder gets the failed checks, the event log and frames from a
+5. **Repair.** If any scene fails, Muse Wonder gets the failed checks, any program error and frames from a
    failing scene, explains the failure in one sentence and patches the program. All 20 scenes run
    again, up to 3 repairs.
 6. **Verified.** At 20/20 you get the program, a test report (Markdown and JSON) and the full attempt
@@ -58,6 +75,28 @@ you approve or edit it → **Muse Wonder** writes the program → AST sandbox �
 parallel → ground-truth checks and the **SAM 3.1** judge → repair if anything failed → report. With
 `--no-video` (the benchmark's ablation) the spec comes from the sentence and the list of scene
 objects alone.
+
+### Beyond a basic integration
+
+- **One model, four jobs that check each other.** Muse Wonder names the objects, writes the checks,
+  writes the program and diagnoses the failures. The checks it writes before any code exists are what
+  its own program is then tested against, on scenes it has not seen. (A repaired program reruns the
+  same 20 scenes, including the failing one it has seen frames of.)
+- **SAM 3.1 as a test oracle.** Besides tracking the demonstration, SAM judges every test scene from
+  rendered camera clips, using nothing from the simulator's state. We run it next to physics ground
+  truth and publish how often the two agree.
+- **Things we did not expect the models to do:**
+  - Wonder overrode bad tracking. SAM found no bowls in the rendered clips, so the track summary fell
+    back to thirds of the frame and placed the green cube of task 6 in the middle. Wonder also sees the
+    video itself, and wrote "the small green cube placed in the right bin", which is what the clip
+    shows. On task 2, whose sentence names no bowl, the summary put the small red cube and the green cube
+    in the middle; the spec still sent red left and green right.
+  - Wonder traced a reach error back to its own use of `avoid`. The report said only "cannot reach pose
+    (0.271, -0.050, 0.550)"; from that, the program and 8 frames, it blamed avoiding the blue cubes and
+    removed `avoid` (see The task-6 repair).
+  - SAM needed the right words: "glass" finds nothing and "light blue cylinder" finds the glass; from
+    overhead a standing glass is not detected, and in the 45° view its box aspect went from 2.7 to 1.1
+    when it fell. That made a glass check possible from a camera alone.
 
 ### A closed check vocabulary
 
@@ -109,22 +148,23 @@ task 6 uses 6000–6019): every attempt and both benchmark conditions run the sa
    box shapes, mainly the height-to-width ratio in the 45° view. Besides SAM's boxes the judge uses
    only fixed scene knowledge (camera calibration, bin positions, object sizes), never the
    simulator's state. Its verdicts are stored next to the simulator's, with the agreement rate. The
-   judge is on by default in `run` and the web app; the benchmark runs it only in the video
-   condition.
+   judge is on by default in `run` and the web app; the benchmark runs it whenever there is a clip,
+   and not in the sentence-only condition.
 
 ### Repair loop, at most 3 repairs
 
 After a failed attempt, Muse Wonder receives the spec, the program, the failed checks grouped by
-pattern with the contact log (what touched what, during which skill), and 8 time-stamped frames
-around the first failure in one failing scene. It returns a one-sentence diagnosis and a corrected
+pattern, any program error, the contact log for failed `untouched`, `upright` or `unmoved` checks
+(what touched what, during which skill), and 8 time-stamped frames around the first failure in one
+failing scene. It returns a one-sentence diagnosis and a corrected
 program, which must pass the sandbox and differ from the failing one. All 20 scenes rerun. The loop
 stops at 20/20, after 3 repairs, or when a patch fails the sandbox twice (the job then ends as
 failed).
 
 ### Cost control
 
-Every Meta Model API response is cached on disk by a hash of the request, so a rerun with the same
-inputs costs $0, and every call, cached or not, is logged to `data/usage.jsonl`.
+Every Muse Wonder and SAM 3.1 response is cached on disk by a hash of the request, so a rerun with the
+same inputs costs $0, and every such call, cached or not, is logged to `data/usage.jsonl`.
 `python -m showtell cost` totals it.
 
 ## Meta models used
@@ -136,34 +176,39 @@ inputs costs $0, and every call, cached or not, is logged to `data/usage.jsonl`.
 
 Both models are called through the OpenAI-compatible Responses API at `https://api.meta.ai/v1`.
 
-## Results so far
+## Results
 
-The benchmark's video condition is **[pending: video benchmark]**: `bench/videos/` has no task
-videos yet, so `bench/results.json` records `missing_video` for all six tasks. Everything below that
-is not marked [pending] is finished and real.
+### Benchmark
 
-### Benchmark, sentence only
+Six tasks on 20 fixed seeds per task, in two conditions: with a demonstration clip plus the sentence,
+and from the sentence alone. Scores are against hand-written reference checks that encode what the
+demonstration shows (`bench/tasks.yaml`); the pipeline never sees them.
 
-The same pipeline without the demo video, on 20 fixed seeds per task. "Own spec" is the run's own
-checks. "Against the reference" scores the final program against hand-written reference checks that
-encode what the human demo is to show (`bench/tasks.yaml`; shot list in `bench/videos/README.md`);
-the pipeline never sees them.
+The clips are **stand-ins**: top-down simulator renders of each task's reference program
+(`bench/make_standins.py`, on a layout outside the test seeds), not recordings of a person. They show
+what a demonstration adds to the sentence. They say nothing yet about how the pipeline copes with a
+phone video: same renderer, same objects, no hand. The human shot list is ready in
+`bench/videos/README.md`, and a filmed clip replaces its task's stand-in in the table.
 
-| Task | Sentence | Own spec, first try → final | Repairs | Against the reference (final) | Cost (list price) |
-|---|---|---|---|---|---|
-| task01_size | "Sort by size: big ones in the left bowl, small ones in the right bowl." | 20/20 | 0 | 20/20 | $0.05 |
-| task02_color | "Sort by color, one bowl per color." | 20/20 | 0 | 20/20 | $0.05 |
-| task03_size_glass | "Sort by size, and don't touch the glass." | 20/20 | 0 | 0/20 | $0.08 |
-| task04_clear | "Clear everything into the middle bowl, but leave the glass alone." | 20/20 | 0 | 20/20 | $0.06 |
-| task05_shape | "Cylinders in the left bowl, cubes in the right bowl." | 20/20 | 0 | 20/20 | $0.04 |
-| task06_color_exc | "Sort by color, but blue things stay where they are." | 19/20 → 20/20 | 1 | 0/20 | $0.14 |
+| Task | Sentence | Stand-in clip + sentence: first try → final | Repairs | Sentence only: final (own spec) | SAM 3.1 agrees (stand-in run) | Cost: stand-in run / sentence only |
+|---|---|---|---|---|---|---|
+| task01_size | "Sort by size: big ones in the left bowl, small ones in the right bowl." | 20/20 → 20/20 | 0 | 20/20 (20/20) | 40/40 | $1.00 / $0.05 |
+| task02_color | "Sort by color, one bowl per color." | 20/20 → 20/20 | 0 | 20/20 (20/20) | 60/60 | $1.03 / $0.05 |
+| task03_size_glass | "Sort by size, and don't touch the glass." | 20/20 → 20/20 | 0 | **0/20** (20/20) | 80/80 | $1.92 / $0.08 |
+| task04_clear | "Clear everything into the middle bowl, but leave the glass alone." | 20/20 → 20/20 | 0 | 20/20 (20/20) | 41/41, 19 undecided | $1.69 / $0.06 |
+| task05_shape | "Cylinders in the left bowl, cubes in the right bowl." | 20/20 → 20/20 | 0 | 20/20 (20/20) | 21/21, 19 undecided | $1.18 / $0.04 |
+| task06_color_exc | "Sort by color, but blue things stay where they are." | 20/20 → 20/20 | 0 | **0/20** (19/20 → 20/20, 1 repair) | 60/60 | $1.12 / $0.14 |
 
-Every run verified its own spec; against the reference, four of six match. The two misses are bowl
-choices the sentence leaves open: on task 3 Wonder put the small blocks left and the large ones right
-(the reference does the reverse), and on task 6 it put green in the middle bowl (the reference uses
-the right one). The task-2 sentence is just as open, and there Wonder's choice happened to match. Closing this gap is
-what the demo video is for; whether it does is **[pending: video benchmark]**, along with the video
-columns of the official table (first try, final, repairs, judge agreement, cost and time per task).
+With a stand-in clip, six of six match the reference on the first try. From the sentence alone, four
+of six do. The two misses are bowl choices the sentence leaves open: on task 3 Wonder put the small
+blocks left and the large ones right (the reference does the reverse), and on task 6 it put green in
+the middle bowl (the reference uses the right one). Both of those programs pass their own checks 20/20:
+a verified program is only as right as its spec, which is why the person approves the spec and why a
+demonstration matters. The task-2 sentence is just as open, and there Wonder's choice happened to match.
+
+Every cost in the table is list price. Three of these runs billed $0, because all their responses came
+from the local cache: task 3's stand-in run, which repeats an earlier stand-in run on the same clip
+rather than drawing a new sample, and the sentence-only runs of tasks 1 and 3.
 
 ### The task-6 repair: a real failure, diagnosed and fixed
 
@@ -191,51 +236,55 @@ the local cache, and the simulator gave every scene the same outcome.
 
 Task 3 was built so that a careless program fails: the 0.20 m glass stands between the objects and
 the bins, above the 0.12 m transit height. A hand-written size sort without `avoid` knocked it over
-on 19/20 seeds; with `avoid` it passed 20/20. Muse Wonder never made that mistake. All four task-3
-programs it has generated avoided the glass on the first try and passed 20/20 on their own checks:
+on 19/20 seeds (the opening shot of the demo video is seed 3018); with `avoid` it passed 20/20. Muse
+Wonder never made that mistake. All four task-3 programs it has generated avoided the glass on the
+first try and passed 20/20 on their own checks:
 sentence only (`20261031-141341-6cd01a`; the benchmark job got the same response from the cache),
 from the stand-in video twice (`20261031-141952-83de37`, `20261031-154240-8ca2da`), and from a
 sentence that never mentions the glass (`rulechange-a-155206`), where the spec added `untouched` and
-`upright` checks for fragile objects on its own. So the repair loop's first real test came from
+`upright` checks for fragile objects, following our prompt's rule for them. So the repair loop's first real test came from
 task 6, not from the failure we designed; we did not change the scene to force one.
 
-The stand-in video is a top-down simulator render of the robot doing task 3, not a human demo. From
-it, the spec put large blocks left and small blocks right, the reference mapping; from the sentence
-alone the mapping was reversed (0/20 against the reference). The same comparison with a human video is
-**[pending: video benchmark]**.
+From the stand-in clip the spec put large blocks left and small blocks right, the reference mapping;
+from the sentence alone the mapping was reversed (0/20 against the reference).
 
 ### Judge agreement
 
-| Run | Checks judged | SAM 3.1 agrees with ground truth |
-|---|---|---|
-| Task 6, sentence only (`20261101-063309-c15793`), 2 attempts × 20 scenes | in_bin 80, unmoved 40 | 120/120 |
-| Task 3, stand-in video (`20261031-154240-8ca2da`), 1 attempt × 20 scenes | in_bin 40, untouched 20, upright 20 | 80/80 |
+| Runs | Checks SAM decided | SAM 3.1 agrees with ground truth | Undecided |
+|---|---|---|---|
+| Task 6, sentence only (`20261101-063309-c15793`), 2 attempts × 20 scenes | in_bin 80, unmoved 40 | 120/120 | 0 |
+| Stand-in benchmark, 6 tasks × 20 scenes | in_bin 202, untouched 40, upright 40, unmoved 20 | 302/302 | 38 |
 
-Only 2 of these 200 verdicts were failures (the two `in_bin` checks of scene 6004), and SAM matched
-both. Failing glass checks were tested separately on six task-3 scenes, three of them with the glass
-knocked over: SAM agreed on 23/23 decided checks, and one was undecided because the fallen glass was
-out of view. That is still too few failures to say much about how SAM judges them.
+The 38 undecided checks are all on tasks 4 and 5: from overhead, SAM found no yellow cylinder in any
+frame of 38 of the 40 test-scene clips, on the open table as well as in the bin, so the check was
+reported as undecided, never as agreement.
+Only 2 of these 422 decided verdicts were failures (the two `in_bin` checks of scene 6004), and SAM
+matched both. Failing glass checks were tested separately on six task-3 scenes, three of them with the
+glass knocked over: SAM agreed on 23/23 decided checks, and one was undecided because the fallen glass
+was out of view. That is still too few failures to say much about how SAM judges them.
 
 ### Cost
 
 List price per run, from each run's report:
 
-- Task-6 demo run: $1.74 (Wonder $0.14, SAM $1.60, 163 calls). Almost all of it is the SAM judge: 160
-  requests of 50 frames each.
-- Task-3 stand-in run: $1.92 (Wonder $0.32, SAM $1.59, 109 calls), including $0.59 for SAM tracking of
-  the 495-frame stand-in video.
+- A verified task with a demonstration clip and the judge: **$1.00 to $1.92** (the six stand-in runs).
+  Most of it is SAM: 50-frame clips for the judge, and tracking the clip itself ($0.59 of the $1.92 on
+  task 3's 495-frame clip).
+- Task-6 repair run: $1.74 (Wonder $0.14, SAM $1.60, 163 calls).
 - Sentence-only benchmark, all six tasks: $0.42 (Wonder only; that condition does not run the judge).
 
-Total API spend so far (`python -m showtell cost`, 2026-11-01): **$4.75 paid** across 430 logged calls,
-81 of them served from the local cache; $7.08 at list price without the cache. Of the paid total,
-SAM 3.1 is $3.72 (319 paid requests, 18,620 billed frames; 390 requests and 27,510 frames logged,
-including 71 cache hits) and Muse Wonder $1.03 (30 paid calls of 40 logged). The task-6 demo run paid
-$1.49, all of it SAM: its Wonder calls repeated the benchmark job's requests and came from the cache.
+Total API spend so far (`python -m showtell cost`, 2026-11-03): **$10.77 paid** of the ~$150 credit,
+across 751 paid calls: SAM 3.1 $8.82 (704 requests, 44,095 billed frames) and Muse Wonder $1.95 (47
+calls). The local cache served every other logged call, so rebuilding and replaying runs costs
+nothing. That log does not cover one Muse Voice Transcribe call, used once to check a draft of the
+video's narration.
 
 ### Speed
 
-On our development machine, each 20-scene attempt of the task-6 run was simulated and rendered in
-19.2 s and 18.9 s, and the SAM judge took another 68 s and 71 s.
+On our development machine a whole stand-in run, from upload to report, took 2.5 to 3.6 minutes (2.0
+on task 3, whose responses all came from the cache). Each
+20-scene attempt of the task-6 repair run was simulated and rendered in 19.2 s and 18.9 s, and the SAM
+judge took another 68 s and 71 s.
 
 ## What keeps it honest
 
@@ -244,7 +293,7 @@ On our development machine, each 20-scene attempt of the task-6 run was simulate
   reported that rather than reshaping the scene until it did.
 - **Ground truth decides.** SAM 3.1 is a second opinion shown next to the simulator with its agreement
   rate; it never changes a result.
-- **Scored against the person, not the model.** The benchmark scores final programs against reference
+- **Scored against a hand-written reference, not the model's own spec.** The benchmark scores final programs against reference
   checks the pipeline never sees, so a program that verifies its own wrong spec still scores 0/20
   (tasks 3 and 6, sentence only).
 - **Numbers are generated.** `bench/run_bench.py` writes `bench/results.json` and generates
@@ -254,7 +303,10 @@ On our development machine, each 20-scene attempt of the task-6 run was simulate
   the 1280×720 re-render re-runs every scene and refuses to swap a video if any outcome changes.
   Replays in the web app say "Replaying a recorded run".
 - **No tuning after the fact.** The reachability gap in `avoid` that task 6 exposed is left as it is,
-  so benchmark outcomes aren't tuned to the tasks.
+  so benchmark outcomes aren't tuned to the tasks. The same goes for the bowl fallback below.
+- **Stand-ins are labelled.** Their file names start with `standin_`, they are kept apart from human
+  runs in `bench/results.json`, and the README table, the Benchmark page, the replay and the demo
+  video each say so wherever a stand-in result appears.
 
 ## Limitations
 
@@ -267,32 +319,60 @@ On our development machine, each 20-scene attempt of the task-6 run was simulate
 - `avoid` picks its detour without checking that the arm can reach it. Task 6 exposed this: scene 6004
   stopped at an unreachable pose. Muse Wonder's patch worked around it by not avoiding the low blue
   cubes; the planner itself is unchanged.
-- No human demo video is filmed yet, so the full pipeline has only run on a stand-in render, and the
-  benchmark's video condition is **[pending]**.
+- No human demo video is filmed yet, so the video path has only run on stand-in renders. How it holds
+  up on a phone clip is untested, including tracking a hand.
 - On rendered scenes SAM needs help: "glass" finds nothing (we ask for "light blue cylinder"), a
   standing glass is not detected from overhead (glass checks use the 45° camera), and a color phrase
   can also match a bin of that color (the judge drops boxes far larger than the object). In the
-  stand-in render SAM found no bowls, so the track summary fell back to splitting the frame into
-  thirds.
-- The judge agreement of the two demo runs rests on only two failing checks.
+  stand-in renders SAM found no bowls, so the track summary falls back to splitting the frame into
+  thirds, which misplaces some end positions (the spec still came out right, see Beyond a basic
+  integration). From overhead, SAM finds a yellow cylinder in only 2 of 40 test-scene clips (38
+  undecided checks).
+- The judge's agreement rests on only two failing checks.
+- The hosted demo replays recorded runs; it has no backend, so a visitor cannot start a live job there.
+  The app runs live on a local backend (shown in the demo video, where the model answers come from
+  the local cache of the stand-in run and the simulator runs every scene again) and in Docker.
 
 ## What's next
 
-1. Film the six demo videos and run the video condition once **[pending]**.
+1. Film the six human demos and run the video condition once. It replaces the stand-in results in the
+   benchmark, whatever it shows.
 2. Make `avoid` check reachability (try the other side, a lower clearance, or no detour) and measure
    the change on the benchmark.
 3. Harder scenes (more objects, clutter) to exercise the repair loop and the SAM judge on more failures.
 4. A real-arm pilot: run a verified program on a physical Panda through the same skill API.
 
+## How it was built
+
+Everything in the repository was written during the event (first commit 2026-10-31; see the history).
+Every model the product calls at runtime is a Meta model. Claude Code was the coding agent, which is
+why commits carry a Claude co-author line. Main third-party parts: MuJoCo and the Franka Panda model
+from MuJoCo Menagerie (both Apache 2.0). Other dependencies, pinned in `requirements.txt` and
+`web/package-lock.json`, keep their own licenses, including Meta's `meta-sam-parser` (SAM License).
+
 ## Links
 
 - Repository: <https://github.com/nikocallas/show-and-tell-robotics> (public)
-- Demo video: [pending: recording, see `docs/demo_script.md`]
-- Hosted demo: <https://show-and-tell-robotics.vercel.app> (demo mode: replays the two recorded runs, no backend)
+- Demo video: <https://show-and-tell-robotics.vercel.app/video/show-and-tell-demo.mp4> (under 3 minutes,
+  captions burned in)
+- Hosted demo: <https://show-and-tell-robotics.vercel.app> (demo mode: replays the three recorded runs, no backend)
 
 <!-- sources:
-Benchmark, bench/results.json (updated_at "2026-10-31 15:51:13", n_seeds 20):
-- video condition missing for all six tasks: tasks.*.video.status = "missing_video"; bench/videos/ holds only README.md
+Who it's for: IFR press release of 2025-09-25, see the link in the section (542,000 installed in 2024; 4,664,000 in operational use); MIT Sloan "How smaller firms can harness the potential of collaborative robots" (Sara Brown, 2021-08-24), the writer's reported speech attributed to Julie Shah: integration generally runs four to five times the cost of the actual robot
+Beyond a basic integration:
+- green cube in the middle third, spec says right bin, rationale quote: data/jobs/bench-task06_color_exc-standin-20261103-155105/report.json track_summary.objects[1].end_bin = middle_bin, track_summary.notes[0], spec.rules, spec.rationale ("The video shows the large red cube placed in the left bin and the small green cube placed in the right bin, ...")
+- task 2 small red and green cubes in the middle third, spec red -> left, green -> right: data/jobs/bench-task02_color-standin-20261103-153905/report.json track_summary.objects[1,3].end_bin = middle_bin, spec.rules; bench/tasks.yaml rules name no bowl
+- reach error wording and what Wonder received: the repair request rebuilt with showtell/agent/repair.py from data/jobs/20261101-063309-c15793 (hash matches its cache/wonder entry): "program error at 6.14 s, after pick(red_cube_large): SkillError: cannot reach pose (0.271, -0.050, 0.550) ..."; contact lines only for failed untouched/upright/unmoved checks (repair.py _watched_objects)
+- rulechange-a spec adds fragile checks: data/jobs/rulechange-a-155206/report.json spec.checks, spec.rationale; the prompt's rule: showtell/agent/prompts.py
+- SAM phrases, aspect 2.7 -> 1.1: PROGRESS.md "Observed API behaviour"
+Stand-in benchmark, bench/results.json (updated_at "2026-11-03 15:53:56", n_seeds 20):
+- tasks.*.standin: status verified; attempts [20/20]; ref_first [20,20]; ref_final [20,20]; repairs 0; job_id bench-<task>-standin-<timestamp>
+- agreement: tasks.*.standin.agreement {agree, n, undecided}: 40/40, 60/60, 80/80, 41/41 + 19, 21/21 + 19, 60/60; by_kind sums in_bin 202/202, untouched 40/40, upright 40/40, unmoved 20/20; total 302/302, 38 undecided; undecided details: data/jobs/<tasks.*.standin.job_id>/report.json attempts[*].seeds[*].sam ("yellow_cylinder_large not visible at the end", "a yellow cylinder not visible at the end"); no box in any frame: attempts/0/seed_*/sam.json overhead["yellow cylinder"] empty in 38 of 40 scenes of tasks 4 and 5 (seeds 4010 and 5005 have tracks, frames 25-49 only)
+- every ground-truth check in the stand-in runs passed (340 of 340 in data/jobs/<tasks.*.standin.job_id>/report.json attempts[*].seeds[*].checks), so the 2 failing verdicts are both from the task-6 repair run
+- cost: tasks.*.standin.cost_usd 1.0015, 1.0299, 1.9186, 1.6907, 1.1758, 1.1187 (sum 7.9352); wall_s 147.6, 207.6, 117.7 (task 3, all cached), 218.7, 148.7, 166.1 (1006 s in all)
+- fully cached runs: tasks.*.*.paid_usd = 0 for task 3 stand-in and tasks 1 and 3 sentence only (data/usage.jsonl, all rows of those job tags cached_locally); task 3's stand-in program equals data/jobs/20261031-154240-8ca2da attempts[0].program
+- stand-in clips: bench/videos/standin/, bench/make_standins.py (seed = task index*1000 + 990); standin_task03_size_glass.mp4 has the same sha256 as the earlier data/probe/standin_task03_overhead.mp4
+Benchmark, sentence only, bench/results.json:
 - sentences: bench/tasks.yaml rules (also data/jobs/<tasks.*.sentence.job_id>/report.json rules)
 - own spec first try -> final: tasks.*.sentence.attempts[*].passed/total (task06: 19/20 then 20/20; all others 20/20)
 - repairs: tasks.*.sentence.repairs (task06: 1, others 0)
@@ -324,10 +404,10 @@ Task-3 runs:
 - SAM limitations on rendered scenes ("glass" finds nothing, standing glass invisible overhead, color phrase matching a bin, no bowls found in the render): PROGRESS.md "Observed API behaviour"; frame-thirds fallback: data/jobs/20261031-154240-8ca2da/report.json track_summary.notes[0]
 - watching not yet shown on a human video (no bowls found, no hand in a robot render): track_summary.notes[0] ("found 0 bowl(s), need 3") of data/jobs/20261031-154240-8ca2da/report.json; the smoke test tracked a synthetic clip, not a hand: PROGRESS.md Phase 0
 - stand-in clip, 495 frames at 10 fps: also ffprobe data/probe/standin_task03_overhead.mp4 (960x720, 10/1 fps, 495 frames; same sha256 as data/jobs/20261031-154240-8ca2da/input/standin_task03_overhead.mp4)
-python -m showtell cost (run 2026-11-01 06:58, data/usage.jsonl, 430 lines; paid/cached split: the same file's records grouped by kind and cached_locally):
-- TOTAL: 430 calls, 81 cache hits, paid $4.7539, no-cache $7.0822
-- kind sam: 390 calls, 71 cache hits, paid $3.7240 = 319 paid calls / 18,620 billed frames (27,510 frames logged; the 71 cache hits carry 8,890); kind wonder: 40 calls, 10 cache hits, paid $1.0299 (30 paid calls)
-- task-6 demo run paid $1.49: tag 20261101-063309-c15793:judge: 160 calls, 11 cache hits, paid 1.4900 for 7,450 billed frames (8,000 logged); :spec, :program, :repair1 paid 0.0000 (cache hits)
+python -m showtell cost (run 2026-11-03, data/usage.jsonl; paid/cached split: the same file's records grouped by kind and cached_locally):
+- TOTAL paid $10.7704
+- kind sam: paid $8.8190 = 704 paid calls / 44,095 billed frames; kind wonder: paid $1.9514 (47 paid calls); the call and cache-hit totals grow with every cached rebuild of the demo video, so they are not quoted
+- the task-6 demo run paid $1.49: tag 20261101-063309-c15793:judge: 160 calls, 11 cache hits, paid 1.4900 for 7,450 billed frames (8,000 logged); :spec, :program, :repair1 paid 0.0000 (cache hits)
 - judge requests per clip: data/usage.jsonl concept counts per tag (20261101-063309-c15793:judge: red cube 40, green cube 40, blue cube 80 over 40 scenes = 3 overhead + 1 at 45 degrees; 20261031-154240-8ca2da:judge: light blue cylinder 40, red/green/blue cube 20 each over 20 scenes = 4 overhead + 1 at 45 degrees)
 - repair call $0.07, 4,366 in / 2,745 out tokens: tag bench-task06_color_exc-sentence-20261031-154958:repair1 (paid 0.0724)
 - stand-in SAM tracking $0.59: tag 20261031-154240-8ca2da:track (no-cache 0.5940, 2,970 frames = 6 x 495)
@@ -336,7 +416,7 @@ Code facts:
 - spec/program/repair effort high: showtell/agent/spec.py SPEC_EFFORT, showtell/agent/program.py, showtell/agent/repair.py; input_video + file_id and json_schema format: showtell/meta/wonder.py
 - SAM up to 4 concurrent requests: showtell/meta/sam.py max_concurrency=4; judge concept "light blue cylinder", 50-frame clips (25 + 25), 2 cm, 45-degree aspect test: showtell/verify/judge_sam.py
 - judge concepts per clip (overhead: every object a check names; 45 degrees: untouched/unmoved, and upright for tall objects only): showtell/verify/judge_sam.py concepts_needed (ANGLE_KINDS, _tall); judge inputs are the clips, the checks, the object specs and scene_meta (camera calibration, bins), never the run's simulator state: judge_sam.judge, showtell/pipeline.py _judge_seed
-- judge on by default in run and the web app, only in the benchmark's video condition: showtell/__main__.py run (judge option, default on; --no-judge), showtell/api/app.py POST /jobs use_judge Form(True), bench/run_bench.py run_condition (use_judge=use_judge and condition == "video")
+- judge on by default in run and the web app, only in the benchmark's video condition: showtell/__main__.py run (judge option, default on; --no-judge), showtell/api/app.py POST /jobs use_judge Form(True), bench/run_bench.py run_condition (uses_video = condition != "sentence"; use_judge=use_judge and uses_video)
 - loop exits: 20/20 or n >= max_repairs (showtell/pipeline.py run_job); a patch rejected twice by the sandbox raises RepairError (showtell/agent/repair.py repair) and run_job ends the job as "failed" (also PROGRESS.md Phase 5)
 - checks: showtell/sim/checks.py (UPRIGHT_COS = cos 20 deg, unmoved tol 0.02 m)
 - skills: showtell/sim/skills.py (TRANSIT_Z = table + 0.12, AVOID_CLEARANCE_Z = 0.10, IK_LAMBDA = 0.05, IK_FAIL_M = 0.02, MAX_SKILL_CALLS = 200, avoid margin_m=0.08); glass 0.20 m: bench/tasks.yaml header and README.md
@@ -344,12 +424,13 @@ Code facts:
 - per-seed process, 120 s, 2048 MB, CPU count - 1: showtell/verify/runner.py (SEED_TIMEOUT_S, DEFAULT_SEED_MEMORY_MB, default_workers, spawn); seeds task_index*1000 + i: runner.task_seeds
 - at most 3 repairs: showtell/contracts.py max_repairs = 3; 8 frames: showtell/pipeline.py failure_frames(n=8)
 - render-demo at 1280x720, refuses on a changed outcome: showtell/verify/demo_render.py (HD = (1280, 720))
-- "2 of these 200 verdicts were failures": count of attempts[*].seeds[*].checks[*] with passed=false over data/jobs/20261101-063309-c15793/report.json and data/jobs/20261031-154240-8ca2da/report.json (2 of 200, both in seed 6004 of attempt 0)
+- "2 of these 422": 120 decided verdicts in data/jobs/20261101-063309-c15793/report.json (2 failed, both in seed 6004 of attempt 0) + 302 in the six bench-*-standin-* reports (0 failed)
 - generated tables: bench/run_bench.py; Benchmark page reads results.json: web/src/pages/Bench.tsx, web/src/lib/bench.ts
 - live progress over SSE, report.md/report.json/program.py downloads: showtell/api/app.py (GET /api/jobs/{id}/events, /report.md, /report.json, /program.py)
 - diff of each patched program: web/src/components/ProgramPanel.tsx, web/src/lib/diff.ts
 - disk cache by request hash, cache hits logged: showtell/meta/cache.py, showtell/meta/wonder.py call_json, showtell/meta/usage.py
 - glass between the objects and the bins: showtell/sim/randomizer.py (module docstring, GLASS_X), PROGRESS.md Phase 1
 - data/ and cache/ git-ignored: .gitignore; recorded runs in the bundle: web/public/demo/<id>/ (report.json, events.json)
-- hosted demo: https://show-and-tell-robotics.vercel.app, deployed 2026-11-01 with the Vercel CLI from web/ (production build, demo mode); PROGRESS.md Phase 8
+- hosted demo: https://show-and-tell-robotics.vercel.app, deployed with the Vercel CLI from web/ (production build, demo mode); PROGRESS.md Phase 8
+- first commit 2026-10-31: git log --reverse; Menagerie licence: third_party/mujoco_menagerie/franka_emika_panda/LICENSE (Apache 2.0)
 -->

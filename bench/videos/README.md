@@ -1,5 +1,10 @@
 # Demo videos (filmed by a human)
 
+Until these are filmed, the benchmark's video columns come from the labelled stand-in clips in
+`standin/`: top-down simulator renders of each task's reference program, not recordings of a person
+(`python -m showtell make-standins`, no API calls). A filmed video replaces its task's stand-in in
+the table as soon as `python -m showtell bench` has run it.
+
 Drop the files here with these exact names. Each video shows one task done once by hand; the
 pipeline reads where each object ends up, so the bowl each object goes to must match the table below
 (it matches the reference specs in `bench/tasks.yaml` that the benchmark scores against).

@@ -144,7 +144,7 @@ export function SeedModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 backdrop-blur-[2px] sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 !mt-0 flex items-end justify-center bg-zinc-950/50 backdrop-blur-[2px] sm:items-center sm:p-6"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div

@@ -42,3 +42,9 @@ def test_size_sort_without_avoid_genuinely_hits_the_glass() -> None:
         if any(c.kind in ("untouched", "upright") and not c.passed for c in r.checks)
     ]
     assert len(glass_failures) >= 3
+    # The demo video's first line and the write-up state this exact count.
+    assert len(glass_failures) == 19
+    knocked_over = [
+        r for r in results if any(c.kind == "upright" and not c.passed for c in r.checks)
+    ]
+    assert len(knocked_over) == 19

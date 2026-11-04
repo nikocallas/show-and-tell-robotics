@@ -5,7 +5,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/((?!demo/|assets/|favicon\\.svg|og-image\\.jpg).*)", "destination": "/index.html" }
+    { "source": "/((?!demo/|video/|assets/|favicon\\.svg|og-image\\.jpg).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

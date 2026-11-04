@@ -83,7 +83,99 @@
           20,
           20
         ],
-        "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(size=\"small\"):\n        pick(obj)\n        place(\"right_bin\")\n"
+        "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(size=\"small\"):\n        pick(obj)\n        place(\"right_bin\")\n",
+        "paid_usd": 0.0
+      },
+      "standin": {
+        "job_id": "bench-task01_size-standin-20261103-153632",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 1.0015,
+        "wall_s": 147.6,
+        "agreement_pct": 100.0,
+        "agreement": {
+          "agree": 40,
+          "n": 40,
+          "undecided": 0,
+          "by_kind": {
+            "in_bin": {
+              "agree": 40,
+              "n": 40
+            }
+          }
+        },
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "right_bin",
+              "leave": false
+            }
+          ],
+          "checks": [
+            {
+              "id": "large_in_left",
+              "kind": "in_bin",
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All large cubes are in the left bin."
+            },
+            {
+              "id": "small_in_right",
+              "kind": "in_bin",
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "right_bin",
+              "text": "All small cubes are in the right bin."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The video shows the large red and blue cubes placed in the left bowl and the small red and green cubes placed in the right bowl. The sentence explicitly states big ones go in the left bowl and small ones in the right bowl, which agrees with the demonstration, so size determines the bin."
+        },
+        "media_path": "video",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(size=\"large\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(size=\"small\"):\n        pick(obj)\n        place(\"right_bin\")\n",
+        "paid_usd": 1.0015
       }
     },
     "task02_color": {
@@ -191,7 +283,121 @@
           20,
           20
         ],
-        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"blue\"):\n        pick(obj)\n        place(\"middle_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"right_bin\")\n"
+        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"blue\"):\n        pick(obj)\n        place(\"middle_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"right_bin\")\n",
+        "paid_usd": 0.0532
+      },
+      "standin": {
+        "job_id": "bench-task02_color-standin-20261103-153905",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 1.0299,
+        "wall_s": 207.6,
+        "agreement_pct": 100.0,
+        "agreement": {
+          "agree": 60,
+          "n": 60,
+          "undecided": 0,
+          "by_kind": {
+            "in_bin": {
+              "agree": 60,
+              "n": 60
+            }
+          }
+        },
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "middle_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "right_bin",
+              "leave": false
+            }
+          ],
+          "checks": [
+            {
+              "id": "red_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All red cubes are in the left bin."
+            },
+            {
+              "id": "blue_in_middle_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "middle_bin",
+              "text": "All blue cubes are in the middle bin."
+            },
+            {
+              "id": "green_in_right_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "right_bin",
+              "text": "All green cubes are in the right bin."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The sentence says to sort by color with one bowl per color. In the demonstration both red cubes end in the left bowl, the blue cube ends in the middle bowl, and the green cube ends in the right bowl, which matches that rule."
+        },
+        "media_path": "video",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"blue\"):\n        pick(obj)\n        place(\"middle_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"right_bin\")\n",
+        "paid_usd": 1.0299
       }
     },
     "task03_size_glass": {
@@ -311,7 +517,141 @@
           0,
           20
         ],
-        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(size=\"small\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"left_bin\", avoid=glasses)\n    for obj in scene.objects(size=\"large\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"right_bin\", avoid=glasses)\n"
+        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(size=\"small\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"left_bin\", avoid=glasses)\n    for obj in scene.objects(size=\"large\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"right_bin\", avoid=glasses)\n",
+        "paid_usd": 0.0
+      },
+      "standin": {
+        "job_id": "bench-task03_size_glass-standin-20261103-154239",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 1.9186,
+        "wall_s": 117.7,
+        "agreement_pct": 100.0,
+        "agreement": {
+          "agree": 80,
+          "n": 80,
+          "undecided": 0,
+          "by_kind": {
+            "in_bin": {
+              "agree": 40,
+              "n": 40
+            },
+            "untouched": {
+              "agree": 20,
+              "n": 20
+            },
+            "upright": {
+              "agree": 20,
+              "n": 20
+            }
+          }
+        },
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "place_in": "right_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "place_in": null,
+              "leave": true
+            }
+          ],
+          "checks": [
+            {
+              "id": "large_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": "large",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "bin": "left_bin",
+              "text": "All large non-fragile objects are in the left bin."
+            },
+            {
+              "id": "small_in_right_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": "small",
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "bin": "right_bin",
+              "text": "All small non-fragile objects are in the right bin."
+            },
+            {
+              "id": "glass_untouched",
+              "kind": "untouched",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The glass has not been touched."
+            },
+            {
+              "id": "glass_upright",
+              "kind": "upright",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The glass remains upright on the table."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The video shows the large red and blue cubes placed in the left bin and the small red and green cubes placed in the right bin, while the clear glass was left alone. The sentence confirms sorting by size and not touching the glass, so large non-fragile objects go left, small non-fragile objects go right, and the glass is left untouched."
+        },
+        "media_path": "video",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(size=\"large\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"left_bin\", avoid=glasses)\n    for obj in scene.objects(size=\"small\", fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"right_bin\", avoid=glasses)\n",
+        "paid_usd": 0.0
       }
     },
     "task04_clear": {
@@ -409,7 +749,119 @@
           20,
           20
         ],
-        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"middle_bin\", avoid=glasses)\n"
+        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"middle_bin\", avoid=glasses)\n",
+        "paid_usd": 0.0627
+      },
+      "standin": {
+        "job_id": "bench-task04_clear-standin-20261103-154446",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 1.6907,
+        "wall_s": 218.7,
+        "agreement_pct": 100.0,
+        "agreement": {
+          "agree": 41,
+          "n": 41,
+          "undecided": 19,
+          "by_kind": {
+            "in_bin": {
+              "agree": 1,
+              "n": 1
+            },
+            "untouched": {
+              "agree": 20,
+              "n": 20
+            },
+            "upright": {
+              "agree": 20,
+              "n": 20
+            }
+          }
+        },
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "place_in": "middle_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "place_in": null,
+              "leave": true
+            }
+          ],
+          "checks": [
+            {
+              "id": "non_fragile_in_middle",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": null,
+                "fragile": false
+              },
+              "bin": "middle_bin",
+              "text": "All non-fragile objects are in the middle bowl."
+            },
+            {
+              "id": "glass_untouched",
+              "kind": "untouched",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The glass has not been touched."
+            },
+            {
+              "id": "glass_upright",
+              "kind": "upright",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "glass",
+                "fragile": null
+              },
+              "bin": null,
+              "text": "The glass remains upright on the table."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The demonstration shows the red cube, blue cube, and yellow cylinder all moved into the middle_bin, while the glass is not moved. The sentence confirms this by saying to clear everything into the middle bowl but leave the glass alone, so non-fragile objects go to the middle_bin and the fragile glass is left untouched and upright."
+        },
+        "media_path": "video",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    glasses = scene.objects(shape=\"glass\")\n    avoid(glasses)\n    for obj in scene.objects(fragile=False):\n        pick(obj, avoid=glasses)\n        place(\"middle_bin\", avoid=glasses)\n",
+        "paid_usd": 1.6907
       }
     },
     "task05_shape": {
@@ -495,7 +947,99 @@
           20,
           20
         ],
-        "final_program": "def run(scene):\n    for obj in scene.objects(shape=\"cylinder\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(shape=\"cube\"):\n        pick(obj)\n        place(\"right_bin\")\n"
+        "final_program": "def run(scene):\n    for obj in scene.objects(shape=\"cylinder\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(shape=\"cube\"):\n        pick(obj)\n        place(\"right_bin\")\n",
+        "paid_usd": 0.043
+      },
+      "standin": {
+        "job_id": "bench-task05_shape-standin-20261103-154831",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 1.1758,
+        "wall_s": 148.7,
+        "agreement_pct": 100.0,
+        "agreement": {
+          "agree": 21,
+          "n": 21,
+          "undecided": 19,
+          "by_kind": {
+            "in_bin": {
+              "agree": 21,
+              "n": 21
+            }
+          }
+        },
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cylinder",
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cube",
+                "fragile": null
+              },
+              "place_in": "right_bin",
+              "leave": false
+            }
+          ],
+          "checks": [
+            {
+              "id": "cylinders_in_left_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cylinder",
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All cylinders are in the left bowl."
+            },
+            {
+              "id": "cubes_in_right_bin",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": null,
+                "shape": "cube",
+                "fragile": null
+              },
+              "bin": "right_bin",
+              "text": "All cubes are in the right bowl."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The video shows the yellow cylinders being placed in the leftmost bowl and the red and blue cubes being placed in the rightmost bowl. The rule sentence confirms these assignments, so cylinders go to the left bin and cubes go to the right bin despite the tracking summary's bin labels."
+        },
+        "media_path": "video",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(shape=\"cylinder\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(shape=\"cube\"):\n        pick(obj)\n        place(\"right_bin\")\n",
+        "paid_usd": 1.1758
       }
     },
     "task06_color_exc": {
@@ -609,10 +1153,128 @@
           0,
           20
         ],
-        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"middle_bin\")\n"
+        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"middle_bin\")\n",
+        "paid_usd": 0.1394
+      },
+      "standin": {
+        "job_id": "bench-task06_color_exc-standin-20261103-155105",
+        "status": "verified",
+        "error": null,
+        "repairs": 0,
+        "attempts": [
+          {
+            "n": 0,
+            "passed": 20,
+            "total": 20,
+            "diagnosis": null
+          }
+        ],
+        "cost_usd": 1.1187,
+        "wall_s": 166.1,
+        "agreement_pct": 100.0,
+        "agreement": {
+          "agree": 60,
+          "n": 60,
+          "undecided": 0,
+          "by_kind": {
+            "in_bin": {
+              "agree": 40,
+              "n": 40
+            },
+            "unmoved": {
+              "agree": 20,
+              "n": 20
+            }
+          }
+        },
+        "spec": {
+          "rules": [
+            {
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "left_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": "right_bin",
+              "leave": false
+            },
+            {
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "place_in": null,
+              "leave": true
+            }
+          ],
+          "checks": [
+            {
+              "id": "red_in_left",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "red",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "left_bin",
+              "text": "All red cubes are in the left bin."
+            },
+            {
+              "id": "green_in_right",
+              "kind": "in_bin",
+              "select": {
+                "size": null,
+                "color": "green",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": "right_bin",
+              "text": "All green cubes are in the right bin."
+            },
+            {
+              "id": "blue_unmoved",
+              "kind": "unmoved",
+              "select": {
+                "size": null,
+                "color": "blue",
+                "shape": null,
+                "fragile": null
+              },
+              "bin": null,
+              "text": "All blue cubes remain in their original positions on the table."
+            }
+          ],
+          "clarifying_question": null,
+          "rationale": "The video shows the large red cube placed in the left bin and the small green cube placed in the right bin, with both blue cubes not moved. The sentence confirms sorting by color but says blue things stay where they are, so blue objects are left in place."
+        },
+        "media_path": "video",
+        "ref_first": [
+          20,
+          20
+        ],
+        "ref_final": [
+          20,
+          20
+        ],
+        "final_program": "def run(scene):\n    for obj in scene.objects(color=\"red\"):\n        pick(obj)\n        place(\"left_bin\")\n    for obj in scene.objects(color=\"green\"):\n        pick(obj)\n        place(\"right_bin\")\n",
+        "paid_usd": 1.1187
       }
     }
   },
-  "updated_at": "2026-10-31 15:51:13",
+  "updated_at": "2026-11-03 15:53:56",
   "n_seeds": 20
 }

@@ -129,11 +129,30 @@ def bench(
     tasks: str | None = typer.Option(None, help="Comma-separated task ids (default: all)"),
     seeds: int = typer.Option(20, help="Seeds per attempt"),
     judge: bool = typer.Option(True, help="Run the SAM judge"),
+    conditions: str | None = typer.Option(
+        None, help="Comma-separated: video, standin, sentence (default: all three)"
+    ),
 ) -> None:
-    """Run the benchmark (both conditions) and write bench/results.{json,md}."""
+    """Run the benchmark (every condition with a clip) and write bench/results.{json,md}."""
+    from bench.run_bench import CONDITIONS
     from bench.run_bench import main as bench_main
 
-    bench_main(tasks=tasks.split(",") if tasks else None, n_seeds=seeds, use_judge=judge)
+    bench_main(
+        tasks=tasks.split(",") if tasks else None,
+        n_seeds=seeds,
+        use_judge=judge,
+        conditions=tuple(conditions.split(",")) if conditions else CONDITIONS,
+    )
+
+
+@app.command("make-standins")
+def make_standins(
+    tasks: str | None = typer.Option(None, help="Comma-separated task ids (default: all)"),
+) -> None:
+    """Render labelled stand-in demo clips (simulator renders, not human demos). No API calls."""
+    from bench.make_standins import main as standins_main
+
+    standins_main(tasks.split(",") if tasks else None)
 
 
 @app.command("render-demo")

@@ -1,5 +1,18 @@
 [
   {
+    "id": "bench-task06_color_exc-standin-20261103-155105",
+    "rules": "Sort by color, but blue things stay where they are.",
+    "status": "verified",
+    "attempts": 1,
+    "created_at": 1793742665.901422,
+    "task_id": "task06_color_exc",
+    "use_video": true,
+    "passed": 20,
+    "total": 20,
+    "title": "Sort by color, from a demonstration clip: verified on the first try",
+    "note": "Stand-in video: a top-down simulator render of the robot doing this task, not a human demonstration (the human video is not recorded yet). This is the benchmark's stand-in run, started from the command line, so the spec was approved without review. Muse Wonder's answers and SAM's tracking were fresh, not cached."
+  },
+  {
     "id": "20261101-063309-c15793",
     "rules": "Sort by color, but blue things stay where they are.",
     "status": "verified",

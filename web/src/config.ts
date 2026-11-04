@@ -33,6 +33,9 @@ export const FIXTURE_LABEL = "Sample data - not a real run";
 /** The public source repository, linked from the footer and the How it works page. */
 export const REPO_URL = "https://github.com/nikocallas/show-and-tell-robotics";
 
+/** The demo video, shipped with the site (web/public/video/). */
+export const VIDEO_URL = `${env.BASE_URL}video/show-and-tell-demo.mp4`;
+
 const MODE_KEY = "showtell.mode";
 
 function readStoredMode(): Mode | null {
