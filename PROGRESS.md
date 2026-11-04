@@ -13,9 +13,9 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
    human condition.
 3. ~~**Hackathon rules**~~ — read on 2026-11-03: <https://cerebralvalley.ai/e/meta-ai-developer-hackathon/waiver>.
    Submissions close Wed Nov 4, 2026, 9:00 PM ET (8:00 PM CT) at the Cerebral Valley portal; judged on Impact 30%,
-   Use of Meta AI Tooling 25%, Technical Depth & Execution 20%, Demo 25%. The form itself is behind a login, so its
-   fields are not known. No rule found on video length (third-party notes of the participant guide say 3 minutes;
-   the cut is 2:57).
+   Use of Meta AI Tooling 25%, Technical Depth & Execution 20%, Demo 25%. An organiser announcement on the event page
+   asks for a 3-minute demo video (the cut is 2:57) and says an open-source GitHub repo is mandatory: added the MIT
+   license with your OK on 2026-11-04.
 4. ~~**Vercel**~~ — logged in and deployed on 2026-11-01: https://show-and-tell-robotics.vercel.app
 5. **Submission**: your details and pressing submit (Indie Developer track, your call on 2026-11-04). Paste-ready text is in
    `docs/submission_form.md`; the private checklist is `docs/submit_checklist.local.md` (git-ignored).

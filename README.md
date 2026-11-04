@@ -285,3 +285,7 @@ Main third-party parts: [MuJoCo](https://github.com/google-deepmind/mujoco) and 
 from [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie) (both Apache 2.0). Other
 dependencies, pinned in `requirements.txt` and `web/package-lock.json`, keep their own licenses, including
 Meta's `meta-sam-parser` (SAM License).
+
+## License
+
+[MIT](LICENSE).

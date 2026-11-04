@@ -348,7 +348,8 @@ Everything in the repository was written during the event (first commit 2026-10-
 Every model the product calls at runtime is a Meta model. Claude Code was the coding agent, which is
 why commits carry a Claude co-author line. Main third-party parts: MuJoCo and the Franka Panda model
 from MuJoCo Menagerie (both Apache 2.0). Other dependencies, pinned in `requirements.txt` and
-`web/package-lock.json`, keep their own licenses, including Meta's `meta-sam-parser` (SAM License).
+`web/package-lock.json`, keep their own licenses, including Meta's `meta-sam-parser` (SAM License). The
+project itself is open source under the MIT license.
 
 ## Links
 

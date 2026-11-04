@@ -1,9 +1,7 @@
 # Submission form answers
 
-Paste-ready text for the portal. The form itself sits behind a login, so its exact fields are not known
-yet; the answers below cover what the official rules judge: impact, use of Meta's tooling, technical
-depth and the demo. The full write-up is [submission.md](submission.md), with sources for its numbers at
-the end of that file.
+Text prepared for the Cerebral Valley submission form. The full write-up is [submission.md](submission.md),
+with sources for its numbers at the end of that file.
 
 ## Project
 
@@ -101,9 +99,31 @@ with timeout and memory limits, damped-least-squares IK, a closed check vocabula
 physics state and the contact log, fixed seeds across every attempt and condition, all responses cached
 by request hash, benchmark tables generated from one results file, more than 500 automated tests.
 
+## Why are Meta's models important to your solution?
+
+Three things in the product depend on what these models do together.
+
+A person's demonstration becomes tests they can read. Muse Wonder takes the demo video, the tracking
+summary and the sentence in one request and returns schema-constrained JSON: rules and pass/fail checks in
+plain sentences, approved before any code exists. That video input is what closes the gap in our benchmark:
+from the sentence alone four of six tasks match our reference, and with a stand-in demonstration clip (a
+simulator render, not a phone video yet) six of six do.
+
+Failures come back explained and patched. The same model writes the program, then reads the failed checks,
+the error and 8 frames of a failing scene, explains the failure in one sentence and patches the code. In our
+one real failure it traced a reach error back to its own use of avoid.
+
+A camera can check the robot. SAM 3.1 takes a noun phrase and a video and returns boxes with no training or
+labelling, so the same model tracks the demonstration and also judges every test scene from rendered clips
+alone, next to physics ground truth. It has agreed with the simulator on every check it could decide so far,
+though only 2 of those 422 verdicts were failures, so that says little yet about how it judges failures. A
+judge that needs only a camera is what could carry over to a real arm, where there is no simulator state to
+read.
+
 ## What was built during the event
 
-All of it: the first commit is 2026-10-31 and the history is public. Main third-party parts are MuJoCo
+All of it: the first commit is 2026-10-31 and the history is public. The project is open source under the
+MIT license. Main third-party parts are MuJoCo
 and the Franka Panda model from MuJoCo Menagerie (both Apache 2.0); other dependencies keep their own
 licenses, including Meta's `meta-sam-parser` (SAM License). Claude Code was the coding agent, so commits
 carry a Claude co-author line and GitHub lists it as a contributor.
