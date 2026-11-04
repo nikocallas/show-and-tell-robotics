@@ -23,9 +23,9 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 ## Current state (2026-11-03)
 
 - Submission package done: demo video (`demo_video/out/`, built by `python -m demo_video`), write-up
-  (`docs/submission.md`), form answers (`docs/submission_form.md`), shot list (`docs/demo_script.md`). The video's
-  sound is your call: macOS's license keeps its system voices to personal, non-commercial use, so the published
-  cut is captions only unless you record a voice or choose a voice with a suitable license.
+  (`docs/submission.md`), form answers (`docs/submission_form.md`), shot list (`docs/demo_script.md`). macOS's license
+  keeps its system voices to personal, non-commercial use, so the published cut is captions only. You chose on
+  2026-11-04 to record your own voice; `docs/demo_script.md` has the steps.
 - The benchmark's video condition ran on labelled stand-in clips (`bench/videos/standin/`, simulator renders of the
   reference programs): 6 of 6 tasks 20/20 on the first try against the reference, against 4 of 6 from the sentence
   alone. SAM 3.1 agreed on 302/302 decided checks, 38 undecided (from overhead, SAM found no yellow cylinder in 38 of
@@ -34,8 +34,10 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
 - Spend: $10.77 paid of the ~$150 credit (`python -m showtell cost`).
 - Code public at https://github.com/nikocallas/show-and-tell-robotics. Hosted demo at
   https://show-and-tell-robotics.vercel.app (Vercel project `show-and-tell-robotics`, team `laymen`, deployed from
-  `web/` with the CLI; production domain public, no backend). The repo and the hosted demo lag behind this package
-  until you say to push and redeploy.
+  `web/` with the CLI; production domain public, no backend). Package pushed and redeployed on 2026-11-04 with your OK.
+  Checked as an anonymous visitor: the video link is `video/mp4` and streams (206, 176.8 s, 1920x1080), a missing video
+  is a real 404, three recorded runs and the stand-in benchmark are live, and the public repo has the new files and
+  not the private checklist.
 - If you film: `check-videos` → `bench --conditions video` → re-export → redeploy; `docs/demo_script.md` has the steps.
 
 ## Verified API facts (from `https://dev.meta.ai/docs/*.md`, fetched 2026-10-31)
@@ -185,8 +187,8 @@ Status of each phase in `CLAUDE.md` Section 6. Updated after every phase.
     2.0). Muse Wonder read the right bins from the
     clip even where the track summary was wrong (SAM finds no bowls in the render, so end positions fall back to
     frame thirds): on task 6 the summary has green in the middle third, the spec's rationale says the right bin.
-- **Phase 8 — Demo mode, polish, deploy**: done with the task-6 run; the stand-in results and the video reach the
-  hosted site with the next redeploy.
+- **Phase 8 — Demo mode, polish, deploy**: done with the task-6 run; the stand-in results and the video went live on
+  2026-11-04.
   - `showtell export-demo --job 20261031-154240-8ca2da` → `web/public/demo/` (17.4 MB); the Runs page and the
     replay work in demo mode (`?demo=1`) with media served from the bundle.
   - A 720p hero render is about 2 MB per scene (44 s), about 40 MB per 20-scene attempt.
